@@ -1,0 +1,11 @@
+@import "@fontsource-variable/inter";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { font-feature-settings: "tnum" 1, "cv11" 1; }
+  body { @apply bg-page font-sans text-body text-ink antialiased; }
+  h1, h2, h3 { @apply text-navy-900; }
+  :focus-visible { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #168C88; border-radius: 8px; }
+}

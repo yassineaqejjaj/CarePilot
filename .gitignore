@@ -1,0 +1,10 @@
+node_modules
+dist
+.venv
+.env
+.env.validate
+test-results
+playwright-report
+__pycache__
+credentials.txt
+.deploy/

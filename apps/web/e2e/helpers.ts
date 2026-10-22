@@ -1,0 +1,13 @@
+import { expect, type Page } from "@playwright/test";
+
+// Comptes de DÉMO du realm de dev (infrastructure/keycloak/carepilot-realm.json). Jamais de vrais comptes.
+export const STAFF = { user: "staff.demo", password: "demo-only" };
+export const PATIENT = { user: "patient.demo", password: "demo-only" };
+
+export async function login(page: Page, who: { user: string; password: string }) {
+  await page.goto("/");
+  await page.locator("#username").fill(who.user);
+  await page.locator("#password").fill(who.password);
+  await page.locator("#kc-login").click();
+  await expect(page.getByRole("button", { name: "Déconnexion" })).toBeVisible();
+}

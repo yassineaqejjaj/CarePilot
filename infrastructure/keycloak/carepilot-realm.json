@@ -1,0 +1,138 @@
+{
+  "realm": "carepilot",
+  "enabled": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "admin"
+      },
+      {
+        "name": "coordinator"
+      },
+      {
+        "name": "designer"
+      },
+      {
+        "name": "viewer"
+      },
+      {
+        "name": "patient"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "carepilot-web",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "redirectUris": [
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "establishment_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "establishment_id",
+            "claim.name": "establishment_id",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true"
+          }
+        },
+        {
+          "name": "audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "carepilot-api",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "patient_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "patient_id",
+            "claim.name": "patient_id",
+            "jsonType.label": "String",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "staff.demo",
+      "enabled": true,
+      "email": "coord@example.test",
+      "attributes": {
+        "establishment_id": [
+          "00000000-0000-0000-0000-000000000001"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo-only",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "coordinator",
+        "designer",
+        "admin"
+      ],
+      "emailVerified": true,
+      "firstName": "Claire",
+      "lastName": "Dubois"
+    },
+    {
+      "username": "patient.demo",
+      "enabled": true,
+      "email": "patient@example.test",
+      "attributes": {
+        "establishment_id": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "patient_id": [
+          "00000000-0000-0000-0000-0000000000a1"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo-only",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "patient"
+      ],
+      "emailVerified": true,
+      "firstName": "Sophie",
+      "lastName": "Martin"
+    }
+  ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\": [{\"name\": \"username\", \"validations\": {\"length\": {\"min\": 3, \"max\": 255}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}}, {\"name\": \"email\", \"validations\": {}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}}, {\"name\": \"firstName\", \"validations\": {}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}}, {\"name\": \"lastName\", \"validations\": {}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}}], \"unmanagedAttributePolicy\": \"ENABLED\"}"
+          ]
+        }
+      }
+    ]
+  }
+}

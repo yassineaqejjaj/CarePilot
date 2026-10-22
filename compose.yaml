@@ -1,0 +1,44 @@
+# Podman : `podman compose up` (ou podman-compose). Mots de passe de DEV uniquement.
+services:
+  postgres:
+    image: docker.io/pgvector/pgvector:pg16
+    environment: {POSTGRES_USER: carepilot, POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-carepilot}", POSTGRES_DB: carepilot}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    ports: ["${POSTGRES_PORT:-5432}:5432"]
+  rabbitmq:
+    image: docker.io/library/rabbitmq:3.13-management
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    command: start-dev --import-realm
+    environment: {KEYCLOAK_ADMIN: admin, KEYCLOAK_ADMIN_PASSWORD: admin}
+    volumes: ["./infrastructure/keycloak:/opt/keycloak/data/import:ro"]
+    ports: ["${KEYCLOAK_PORT:-8080}:8080"]
+  api:
+    build: {context: ., dockerfile: Dockerfile.api}
+    env_file: .env
+    depends_on: [postgres, keycloak]
+    command: sh -c "cd apps/api && alembic upgrade head && cd /srv && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports: ["${API_PORT:-8000}:8000"]
+  worker:
+    build: {context: ., dockerfile: Dockerfile.api}
+    env_file: .env
+    environment: {RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672//"}
+    depends_on: [rabbitmq, postgres]
+    command: celery -A worker worker -B --loglevel=info
+  seaweedfs:
+    image: docker.io/chrislusf/seaweedfs:latest
+    command: server -s3 -dir=/data
+    volumes: [swdata:/data]
+  caddy:
+    image: docker.io/library/caddy:2
+    volumes: ["./infrastructure/caddy/Caddyfile:/etc/caddy/Caddyfile:ro"]
+    ports: ["8088:80"]
+    depends_on: [api]
+  prometheus:
+    image: docker.io/prom/prometheus:latest
+    volumes: ["./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    ports: ["9090:9090"]
+  grafana:
+    image: docker.io/grafana/grafana-oss:latest
+    ports: ["3001:3000"]
+volumes: {pgdata: {}, swdata: {}}
