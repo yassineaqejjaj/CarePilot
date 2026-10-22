@@ -1,6 +1,6 @@
 # CarePilot
 
-**Administrative patient-journey coordination for French private clinics.**
+**Administrative patient-journey coordination for  private clinics.**
 *Every patient. Every step. Connected.*
 
 CarePilot helps a clinic's admissions team keep every patient's pre- and post-operation paperwork on track, from **D-21 to D+7** around an ambulatory surgery. It shows who needs attention today, drafts the reminders for you, and never sends anything without a human saying yes.
