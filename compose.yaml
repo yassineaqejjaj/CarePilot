@@ -17,7 +17,7 @@ services:
     build: {context: ., dockerfile: Dockerfile.api}
     env_file: .env
     depends_on: [postgres, keycloak]
-    command: sh -c "cd apps/api && alembic upgrade head && cd /srv && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    command: /srv/scripts/start-api.sh
     ports: ["${API_PORT:-8000}:8000"]
   worker:
     build: {context: ., dockerfile: Dockerfile.api}
