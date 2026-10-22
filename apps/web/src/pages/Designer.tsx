@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import ReactFlow, { Background, Controls, MarkerType, type Edge, type Node } from "reactflow";
+import ReactFlow, { Background, Controls, MarkerType, Position, type Edge, type Node } from "reactflow";
 import "reactflow/dist/style.css";
 import { api } from "@/lib/api";
 import { Button, Card, CardContent, CardHeader, CardTitle, Pill } from "@/components/ui";
@@ -44,13 +44,19 @@ export default function Designer() {
 
   const { nodes, edges } = useMemo(() => {
     const order = steps.map((s, i) => ({ s, i })).sort((a, b) => a.s.offset_days - b.s.offset_days || a.i - b.i);
-    const nodes: Node[] = order.map(({ s, i }, col) => ({
-      id: String(i), position: { x: (col % 4) * 200, y: Math.floor(col / 4) * 110 }, selected: i === sel,
-      data: { label: `${dayLabel(s.offset_days)} · ${s.title}${s.blocking ? " ⛔" : ""}` },
-      style: { width: 170, fontSize: 12, border: s.blocking ? "2px solid #CD5962" : "1px solid #CBD3DB" },
-    }));
+    // Disposition en serpentin : 4 étapes par ligne, une ligne sur deux inversée, liaison verticale en bout de ligne.
+    const nodes: Node[] = order.map(({ s, i }, col) => {
+      const row = Math.floor(col / 4), pos = col % 4, ltr = row % 2 === 0;
+      return {
+        id: String(i), position: { x: (ltr ? pos : 3 - pos) * 200, y: row * 110 }, selected: i === sel,
+        sourcePosition: pos === 3 ? Position.Bottom : ltr ? Position.Right : Position.Left,
+        targetPosition: pos === 0 && row > 0 ? Position.Top : ltr ? Position.Left : Position.Right,
+        data: { label: `${dayLabel(s.offset_days)} · ${s.title}${s.blocking ? " ⛔" : ""}` },
+        style: { width: 170, fontSize: 12, border: s.blocking ? "2px solid #CD5962" : "1px solid #CBD3DB", borderRadius: 8 },
+      };
+    });
     const edges: Edge[] = order.slice(1).map(({ i }, k) => ({
-      id: `e${k}`, source: String(order[k].i), target: String(i), markerEnd: { type: MarkerType.ArrowClosed },
+      id: `e${k}`, type: "smoothstep", source: String(order[k].i), target: String(i), markerEnd: { type: MarkerType.ArrowClosed },
     }));
     return { nodes, edges };
   }, [steps, sel]);
