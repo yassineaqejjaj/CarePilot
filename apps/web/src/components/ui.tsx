@@ -37,7 +37,7 @@ const TONES = {
 } as const;
 export type Tone = keyof typeof TONES;
 export const Pill = ({ tone = "neutral", className, ...p }: React.HTMLAttributes<HTMLSpanElement> & { tone?: Tone }) => (
-  <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-meta font-semibold", TONES[tone], className)} {...p} />
+  <span className={cn("inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-meta font-semibold", TONES[tone], className)} {...p} />
 );
 /** Priorités : tags carrés, jamais en pilule. */
 export const PriorityTag = ({ priority, children }: { priority: "urgent" | "high" | "medium" | "ready"; children: React.ReactNode }) => {

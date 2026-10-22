@@ -46,8 +46,8 @@ export default function CockpitPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
-        <Kpi label="Parcours actifs" value={k.active}><Pill tone="success">{k.finished_week} terminés cette semaine</Pill></Kpi>
-        <Kpi label="En bonne voie" value={k.on_track}><div className="flex items-center gap-2"><Progress value={k.on_track_pct} /><span className="text-meta tabular-nums">{k.on_track_pct} %</span></div></Kpi>
+        <Kpi label="Parcours actifs" value={k.active}><Pill tone="success">{k.finished_week} terminé{k.finished_week > 1 ? "s" : ""} (7 j)</Pill></Kpi>
+        <Kpi label="En bonne voie" value={k.on_track}><div className="flex items-center gap-2"><Progress value={k.on_track_pct} /><span className="whitespace-nowrap text-meta tabular-nums">{k.on_track_pct} %</span></div></Kpi>
         <Kpi label="Dossiers incomplets" value={k.incomplete}><Pill tone="warning">à relancer</Pill></Kpi>
         <Kpi label="Tâches à traiter" value={k.tasks_to_treat} warn><Pill tone="critical">{k.urgent} urgentes</Pill></Kpi>
         <Kpi label="Échéances sous 72 h" value={k.deadlines_72h}><span className="text-meta text-ink-2">{k.next_deadline ? `Prochaine : ${dayMonth(k.next_deadline)}` : "Aucune"}</span></Kpi>
@@ -76,7 +76,7 @@ export default function CockpitPage() {
                 </div>
                 <div className="flex min-w-[280px] items-center gap-4">
                   <div className="w-36">
-                    <div className="flex items-center gap-2"><Progress value={q.progress} /><span className="text-meta tabular-nums">{q.progress} %</span></div>
+                    <div className="flex items-center gap-2"><Progress value={q.progress} /><span className="whitespace-nowrap text-meta tabular-nums">{q.progress} %</span></div>
                     {q.next_doc && <span className="mt-2 inline-flex items-center gap-1 rounded-tag bg-surface-2 px-2 py-0.5 text-meta"><FileText size={12} />{q.next_doc}</span>}
                   </div>
                   <span className="flex items-center gap-2"><Avatar name={q.owner} />{q.owner}</span>

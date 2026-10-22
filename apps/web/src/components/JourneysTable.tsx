@@ -33,7 +33,7 @@ export default function JourneysTable({ data, limit, query = "" }: { data: Journ
                 <td className="px-4 py-3">{r.procedure}</td>
                 <td className="px-4 py-3 tabular-nums">{shortDate(r.surgery_date)}<p className="text-meta text-ink-2">{r.days_to_surgery >= 0 ? jLabel(r.days_to_surgery) : `J+${-r.days_to_surgery}`}</p></td>
                 <td className="px-4 py-3">{r.stage}</td>
-                <td className="w-36 px-4 py-3"><div className="flex items-center gap-2"><Progress value={r.progress} /><span className="text-meta tabular-nums">{r.progress} %</span></div></td>
+                <td className="w-36 px-4 py-3"><div className="flex items-center gap-2"><Progress value={r.progress} /><span className="whitespace-nowrap text-meta tabular-nums">{r.progress} %</span></div></td>
                 <td className="px-4 py-3"><Pill tone={STATE_TONE[r.state]}>{r.state_label}</Pill></td>
                 <td className="px-4 py-3"><span className="flex items-center gap-2"><Avatar name={r.owner || "—"} />{r.owner}</span></td>
                 <td className="px-2"><Link aria-label={`Ouvrir ${r.patient_name}`} to={`/parcours/${r.journey_id}`} className="text-ink-2"><ChevronRight size={16} /></Link></td>

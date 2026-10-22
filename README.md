@@ -39,6 +39,8 @@ Each clinic only ever sees its own data.
 
 ### 1. Operations cockpit: "what needs me today?"
 
+![Operations cockpit, full page](docs/screenshots/01b-cockpit-full.png)
+
 The home page opens with a daily summary: active journeys, how many are on track, incomplete files, tasks to handle (with the urgent ones counted), deadlines within 72 hours, and journeys completed this week.
 
 - **Priority queue**, ranked by deadline and impact on the surgery date. Each card shows the patient, the procedure, the missing document, the owner and a one-click action.
