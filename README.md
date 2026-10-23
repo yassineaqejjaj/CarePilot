@@ -3,6 +3,8 @@
 **Administrative patient-journey coordination for  private clinics.**
 *Every patient. Every step. Connected.*
 
+https://github.com/user-attachments/assets/f6f8542e-7ebe-4b5e-8892-dd34fc8fe758
+
 CarePilot helps a clinic's admissions team keep every patient's pre- and post-operation paperwork on track, from **D-21 to D+7** around an ambulatory surgery. It shows who needs attention today, drafts the reminders for you, and never sends anything without a human saying yes.
 
 > **Demo only.** All patients, clinics and documents in this repository are **fictitious**. CarePilot is **not** presented as GDPR- or HDS-compliant, and it must not process real health data before the legal, contractual and security review described in [Security & compliance](#security--compliance). It coordinates **administrative** tasks only: no diagnosis, no medical decision.
