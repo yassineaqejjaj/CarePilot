@@ -56,7 +56,7 @@ export default function NewJourney({ onClose, initialTemplateId }: { onClose: ()
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4" role="dialog" aria-modal="true" aria-label="Nouveau parcours">
-      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-panel bg-white p-6 shadow-modal">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto glass-sheet rounded-panel p-6">
         <div className="flex items-start justify-between"><h2 className="text-lg font-semibold">Nouveau parcours</h2><button aria-label="Fermer" onClick={()=>close()} className="text-ink-2">✕</button></div>
         <div className="mt-3 flex gap-2" role="tablist">
           {([["manual", "Saisie manuelle"], ["csv", "Import CSV"]] as const).map(([k, l]) => (

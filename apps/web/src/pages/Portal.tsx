@@ -50,7 +50,7 @@ export default function PortalPage() {
   if (!data) return <div className="space-y-3 p-4"><Skeleton className="h-16" /><Skeleton className="h-40" /><Skeleton className="h-64" /></div>;
 
   const header = (
-    <header className="flex items-center gap-3 border-b border-line bg-white px-4 py-3">
+    <header className="flex items-center gap-3 glass-toolbar border-b border-line px-4 py-3">
       <Logo size={32} /><div className="flex-1 leading-tight"><p className="font-semibold text-navy-900">{data.establishment}</p><p className="text-meta text-ink-2">M3aya Santé</p></div>
       <button className="rounded-ctl border border-line-strong px-2.5 py-1 text-sm font-medium" onClick={() => setLang(lang === "fr" ? "ar" : "fr")}>{lang === "fr" ? "العربية" : "Français"}</button>
       <button aria-label={t("logout")} title={t("logout")} onClick={() => logout()}><Avatar name={displayName() || data.first_name} className="h-9 w-9" /></button>
@@ -66,11 +66,11 @@ export default function PortalPage() {
       [t("consent.rights"), t("consent.rights.v", { contact: n.rights_contact || "—" })], [t("consent.cndp"), n.cndp_ref || t("consent.cndp.none")],
     ];
     return (
-      <div className="mx-auto min-h-screen max-w-[430px] bg-page text-patient">{header}
+      <div className="mx-auto min-h-screen max-w-[430px] glass-portal text-patient">{header}
         <main className="space-y-4 px-4 py-5">
           <h1 className="flex items-center gap-2 text-[22px] font-semibold"><ShieldCheck className="text-teal-700" />{t("consent.title")}</h1>
           <p className="text-ink-2">{t("consent.intro")}</p>
-          <dl className="divide-y divide-line rounded-panel border border-line bg-white">
+          <dl className="divide-y divide-line glass-card rounded-panel">
             {rows.map(([k, v]) => <div key={k} className="p-4"><dt className="text-meta font-semibold uppercase tracking-wide text-teal-800">{k}</dt><dd className="mt-1">{v}</dd></div>)}
           </dl>
           <Button size="patient" disabled={consent.isPending} onClick={() => consent.mutate(true)}>{t("consent.accept")}</Button>
@@ -87,7 +87,7 @@ export default function PortalPage() {
 
   const Tasks = () => (
     <section aria-label={t("tasks.title")}><h2 className="mb-2 text-lg font-semibold">{t("tasks.title")}</h2>
-      <ul className="overflow-hidden rounded-panel border border-line bg-white">
+      <ul className="overflow-hidden glass-card rounded-panel">
         {j?.tasks.map((x) => (
           <li key={x.id} className="flex items-center gap-3 border-b border-line p-4 last:border-0">
             <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full", x.status === "done" ? "bg-success-bg text-success-text" : "bg-surface-2 text-ink-2")}>{x.status === "done" ? <Check size={15} /> : <ClipboardList size={15} />}</span>
@@ -100,7 +100,7 @@ export default function PortalPage() {
   );
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-[430px] flex-col bg-page">
+    <div className="mx-auto flex min-h-screen max-w-[430px] flex-col glass-portal">
       {header}
       <LiveUpdates />
       {preview&&<DocumentPreview file={preview.file} lang={lang} onCancel={()=>setPreview(null)} onConfirm={file=>{upload.mutate({id:preview.id,file});setPreview(null)}}/>}
@@ -120,9 +120,9 @@ export default function PortalPage() {
               ) : (
                 <Button size="patient" className="mt-4 bg-signal text-navy-900 hover:bg-mint-300" disabled={submit.isPending} onClick={() => submit.mutate(todo.id)}>{t("todo.done")}</Button>)}
             </section>) : (
-            <section className="rounded-panel border border-line bg-white p-5"><p className="font-semibold text-navy-900">{t("alldone.title")}</p><p className="text-ink-2">{t("alldone.text")}</p></section>))}
+            <section className="glass-card rounded-panel p-5"><p className="font-semibold text-navy-900">{t("alldone.title")}</p><p className="text-ink-2">{t("alldone.text")}</p></section>))}
           {(tab === "home" || tab === "journey") && (
-            <section className="rounded-panel border border-line bg-white p-5" aria-label={t("prep.title")}>
+            <section className="glass-card rounded-panel p-5" aria-label={t("prep.title")}>
               <div className="flex items-baseline justify-between"><h2 className="font-semibold text-navy-900">{t("prep.title")}</h2><span className="tabular-nums text-ink-2">{t("prep.steps", { done: j.progress.done, total: j.progress.total })}</span></div>
               <Progress value={j.progress.total ? (100 * j.progress.done) / j.progress.total : 0} className="mt-3 h-2" />
               <p className="mt-3 text-ink-2">{t("prep.surgery", { date: long(j.surgery_date, lang), time: j.admission_time })}</p>
@@ -134,19 +134,19 @@ export default function PortalPage() {
             <section aria-label={t("dates.title")}><h2 className="mb-2 text-lg font-semibold">{t("dates.title")}</h2>
               {[[-1, t("dates.practical")], [0, t("dates.admission", { time: j.admission_time })]].map(([off, text]) => {
                 const d = new Date(j.surgery_date + "T12:00:00"); d.setDate(d.getDate() + (off as number));
-                return (<div key={String(off)} className="mb-2 flex gap-3 rounded-panel border border-line bg-white p-3">
+                return (<div key={String(off)} className="mb-2 flex gap-3 glass-card rounded-panel p-3">
                   <div className="w-12 shrink-0 rounded-ctl bg-mint-100 py-1 text-center text-teal-800"><p className="text-[10px] font-semibold uppercase">{d.toLocaleDateString(locale(lang), { month: "short" })}</p><p className="text-lg font-bold tabular-nums">{d.getDate()}</p></div>
                   <p className="flex-1 self-center">{text as string}</p></div>);
               })}</section>)}
           {tab === "messages" && !delegated && <PatientAssistant arabic={lang === "ar"} />}
           {tab === "messages" && (
             <section aria-label={t("messages.title")}><h2 className="mb-2 text-lg font-semibold">{t("messages.title")}</h2>
-              {j.messages.length === 0 ? <p className="rounded-panel border border-line bg-white p-4 text-ink-2">{t("messages.none")}</p> :
-                j.messages.map((m, i) => <div key={i} className="mb-2 rounded-panel border border-line bg-white p-4"><p className="font-semibold text-navy-900">{m.subject}</p><p className="mt-1 whitespace-pre-wrap">{m.body}</p></div>)}</section>)}
+              {j.messages.length === 0 ? <p className="glass-card rounded-panel p-4 text-ink-2">{t("messages.none")}</p> :
+                j.messages.map((m, i) => <div key={i} className="mb-2 glass-card rounded-panel p-4"><p className="font-semibold text-navy-900">{m.subject}</p><p className="mt-1 whitespace-pre-wrap">{m.body}</p></div>)}</section>)}
           {tab === "rights" && (
             <section aria-label={t("rights.title")} className="space-y-3"><h2 className="text-lg font-semibold">{t("rights.title")}</h2>
               <Button size="patient" variant="secondary" onClick={() => download("/portal/my-data", "mes-donnees.json").catch(fail)}>{t("rights.export")}</Button>
-              <div className="space-y-2 rounded-panel border border-line bg-white p-4">
+              <div className="space-y-2 glass-card rounded-panel p-4">
                 <div className="grid gap-2">{(["rectification", "opposition", "deletion"] as const).map((k) => (
                   <label key={k} className={cn("flex items-center gap-2 rounded-ctl border p-3", kind === k ? "border-teal-700 bg-mint-100" : "border-line-strong")}>
                     <input type="radio" name="kind" checked={kind === k} onChange={() => setKind(k)} />{t(`rights.${k}` as const)}</label>))}</div>
@@ -156,7 +156,7 @@ export default function PortalPage() {
               <p className="text-meta text-ink-2">{data.notice.cndp_ref ? `CNDP : ${data.notice.cndp_ref}` : t("consent.cndp.none")} · {data.notice.rights_contact}</p>
             </section>)}
           {tab === "home" && (
-            <section className="rounded-panel border border-line bg-white p-5"><h2 className="font-semibold text-navy-900">{t("help.title")}</h2>
+            <section className="glass-card rounded-panel p-5"><h2 className="font-semibold text-navy-900">{t("help.title")}</h2>
               <p className="mt-1 text-ink-2">{t("help.hours")}</p>
               <div className="mt-3 grid grid-cols-2 gap-2"><Button variant="secondary" size="sm" disabled={!data.contacts?.phone} onClick={() => { if(data.contacts?.phone)location.href="tel:"+data.contacts.phone; }}><Phone size={14} />{t("help.call")}</Button>
                 <Button variant="secondary" size="sm" onClick={() => {setTab("messages");setTimeout(()=>{const help=document.getElementById("portal-help");help?.setAttribute("open","");help?.scrollIntoView({block:"center"});},0)}}><Mail size={14} />{t("help.write")}</Button></div></section>)}

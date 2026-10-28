@@ -106,13 +106,19 @@ test("validation humaine : la proposition est validée et l'envoi est journalis�
     (await approve.count()) === 0,
     "file vide : réinitialiser la base de démo (RESET=1)",
   );
+  const response = page.waitForResponse(r => r.url().includes("/ai/proposals/") && r.url().endsWith("/approve") && r.request().method() === "POST");
   await approve.first().click();
-  await expect(page.getByText("Proposition validée")).toBeVisible();
+  const result = await response;
+  expect(result.ok()).toBeTruthy();
+  const { delivery } = await result.json();
+  // A fictional dossier may lack contact details: approval still succeeds,
+  // while the separately recorded delivery failure must remain visible.
+  await expect(page.getByText(delivery?.status === "failed" ? "Validée, mais l'envoi a échoué" : "Proposition validée")).toBeVisible();
   await page.getByRole("link", { name: "Communications" }).click();
   await expect(
     page.getByRole("heading", { name: "Communications" }),
   ).toBeVisible();
-  await expect(page.getByText("Simulé").first()).toBeVisible();
+  await expect(page.getByText(delivery?.status === "failed" ? "Échec" : "Simulé", {exact:true}).first()).toBeVisible();
 });
 
 test("lien patient sécurisé, consentement, arabe/RTL, dépôt de pièce, puis vérification côté personnel", async ({

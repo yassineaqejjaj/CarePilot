@@ -1114,7 +1114,7 @@ export default function Operations({ mode }: { mode?: string }) {
           aria-modal="true"
           aria-label="Dossier administratif"
         >
-          <div className="h-full w-full max-w-3xl overflow-y-auto bg-page p-5 shadow-modal">
+          <div className="glass-sheet h-full w-full max-w-3xl overflow-y-auto p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">
                 {d?.reference ?? "Chargement…"} · dossier administratif

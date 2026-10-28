@@ -536,7 +536,7 @@ export default function JourneyDetailPage() {
           aria-modal="true"
           aria-label="Lien patient"
         >
-          <div className="w-full max-w-lg rounded-panel bg-white p-6 shadow-modal">
+          <div className="w-full max-w-lg glass-sheet rounded-panel p-6">
             <h2 className="text-lg font-semibold">Lien patient</h2>
             <p className="mt-2 text-ink-2">
               {invite.status === "sent"

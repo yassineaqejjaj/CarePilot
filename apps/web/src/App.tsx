@@ -153,7 +153,7 @@ function Sidebar({
     },
   ];
   return (
-    <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col overflow-y-auto border-r border-line bg-white px-3 py-4 lg:flex">
+    <aside className="glass-sidebar sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col overflow-y-auto border-r border-line px-3 py-4 lg:flex">
       <div className="mb-5 flex flex-col items-center px-2">
         <BrandLogo className="h-auto w-[120px]" />
         <p className="mt-1 text-center text-[11px] text-ink-2">
@@ -219,7 +219,7 @@ function Topbar({
   const nav = useNavigate();
   const [q, setQ] = useState("");
   return (
-    <header className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-line bg-white/95 px-3 py-3 backdrop-blur sm:px-6">
+    <header className="glass-toolbar sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-line px-3 py-3 sm:px-6">
       <div className="flex items-center gap-2.5 rounded-card border border-line bg-white px-3 py-1.5">
         <span className="flex h-8 w-8 items-center justify-center rounded-ctl bg-mint-100 text-teal-700">
           <Building2 size={16} />
@@ -365,7 +365,7 @@ function StaffApp() {
   const home =
     !isAdmin && r.includes("coordinator") ? "/operations" : "/vue-ensemble";
   return (
-    <div className="flex min-h-screen">
+    <div className="glass-app flex min-h-screen">
       <Sidebar
         canDesign={canDesign}
         isAdmin={isAdmin}
@@ -380,7 +380,7 @@ function StaffApp() {
           multiSite={multiSite}
         />
         <nav
-          className="flex items-center justify-around border-b border-line bg-white p-2 lg:hidden"
+          className="glass-toolbar flex items-center justify-around border-b border-line p-2 lg:hidden"
           aria-label="Navigation équipe mobile"
         >
           {[
@@ -410,7 +410,7 @@ function StaffApp() {
           <nav
             id="mobile-more"
             aria-label="Autres rubriques"
-            className="grid gap-1 border-b border-line bg-white p-4 lg:hidden"
+            className="glass-sheet grid gap-1 border-b border-line p-4 lg:hidden"
             onClick={() => setMore(false)}
           >
             {[

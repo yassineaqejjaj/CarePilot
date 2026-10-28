@@ -31,7 +31,7 @@ export default function DocumentPreview({
         e.preventDefault();
         onCancel();
       }}
-      className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-32px)] max-w-md overflow-auto rounded-panel bg-white p-5 backdrop:bg-navy-900/50"
+      className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-32px)] max-w-md overflow-auto glass-sheet rounded-panel p-5 backdrop:bg-navy-900/50"
       dir={ar ? "rtl" : "ltr"}
     >
       <h2 className="text-xl font-semibold">

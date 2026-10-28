@@ -11,3 +11,88 @@
   [dir="rtl"] body, [dir="rtl"] { font-family: "Noto Sans Arabic Variable", "Inter Variable", system-ui, sans-serif; }
   :focus-visible { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #168C88; border-radius: 8px; }
 }
+
+/* M3aya frosted materials: opaque fallbacks work without backdrop-filter. */
+@layer components {
+  .glass-app, .glass-portal {
+    background-color: #f1f7f8;
+    background-image:
+      radial-gradient(ellipse at 8% 0%, rgba(123, 220, 200, .28), transparent 48%),
+      radial-gradient(ellipse at 96% 22%, rgba(130, 172, 236, .20), transparent 46%),
+      linear-gradient(145deg, #f3faf8, #f0f4fa 62%, #f8fafb);
+    background-attachment: fixed;
+  }
+  .glass-card {
+    border: 1px solid rgba(174, 197, 204, .54);
+    background: #fbfdfd;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 8px 28px -16px rgba(28, 67, 89, .22);
+  }
+  .glass-toolbar, .glass-sidebar, .glass-sheet {
+    background: #f9fcfc;
+    border-color: rgba(174, 197, 204, .50);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.94), 0 8px 28px -20px rgba(28,67,89,.24);
+  }
+  .glass-control {
+    background: rgba(255,255,255,.88);
+    box-shadow: inset 0 1px 0 #fff, 0 2px 5px rgba(28,67,89,.04);
+  }
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass-card {
+      background: linear-gradient(135deg, rgba(255,255,255,.85), rgba(255,255,255,.66));
+      -webkit-backdrop-filter: blur(14px) saturate(125%);
+      backdrop-filter: blur(14px) saturate(125%);
+    }
+    .glass-sidebar {
+      background: rgba(246,252,251,.82);
+      -webkit-backdrop-filter: blur(24px) saturate(135%);
+      backdrop-filter: blur(24px) saturate(135%);
+    }
+    .glass-toolbar, .glass-sheet {
+      background: rgba(250,253,253,.87);
+      -webkit-backdrop-filter: blur(22px) saturate(135%);
+      backdrop-filter: blur(22px) saturate(135%);
+    }
+  }
+  /* Nested information and table cells keep a stable reading surface. */
+  .glass-card .glass-card, .glass-sheet .glass-card {
+    background: #fbfdfd;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: inset 0 1px 0 #fff, 0 2px 8px rgba(28,67,89,.04);
+  }
+  .glass-card thead { background: #edf3f5; }
+  .glass-card tbody { background: rgba(255,255,255,.76); }
+  .glass-card input, .glass-card select, .glass-card textarea { background-color: #fff; }
+}
+
+@media (max-width: 640px) {
+  .glass-app, .glass-portal { background-attachment: scroll; }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .glass-card, .glass-toolbar, .glass-sidebar, .glass-sheet, .glass-control {
+    background: #fff !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    border-color: #9aabb8;
+    box-shadow: none;
+  }
+  .glass-app, .glass-portal { background: #f5f8fa; }
+}
+@media (forced-colors: active) {
+  .glass-card, .glass-toolbar, .glass-sidebar, .glass-sheet, .glass-control {
+    background: Canvas;
+    color: CanvasText;
+    border: 1px solid CanvasText;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: none;
+  }
+}
+@media print {
+  .glass-card, .glass-toolbar, .glass-sidebar, .glass-sheet {
+    background: white !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+  }
+}

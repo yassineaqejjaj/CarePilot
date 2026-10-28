@@ -9,7 +9,7 @@ const button = cva(
     variants: {
       variant: {
         primary: "bg-teal-700 text-white hover:bg-teal-800",
-        secondary: "border border-line-strong bg-white text-navy-900 hover:bg-surface-2",
+        secondary: "glass-control border border-line-strong text-navy-900 hover:bg-surface-2",
         ghost: "text-teal-700 hover:bg-mint-100",
         danger: "border border-critical/40 bg-white text-critical-text hover:bg-critical-bg",
       },
@@ -26,7 +26,7 @@ Button.displayName = "Button";
 
 /* ---- Cartes ---- */
 export const Card = ({ className, ...p }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("rounded-card border border-line bg-white shadow-card", className)} {...p} />
+  <div className={cn("glass-card rounded-card", className)} {...p} />
 );
 
 /* ---- Statuts : pastilles (planche §06) ---- */
@@ -103,7 +103,7 @@ export function Confirm({ open, title, children, confirmLabel, onConfirm, onCanc
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="w-full max-w-md rounded-panel bg-white p-6 shadow-modal">
+      <div className="glass-sheet w-full max-w-md rounded-panel p-6">
         <h2 className="text-lg font-semibold">{title}</h2>
         <div className="mt-2 text-ink-2">{children}</div>
         <div className="mt-5 flex justify-end gap-2">

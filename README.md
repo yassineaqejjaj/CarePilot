@@ -88,6 +88,12 @@ npx vercel deploy --prebuilt --prod
 
 The packager reads the backend destination from `apps/web/vercel.json` and copies only the generated public `dist` files into ignored `.vercel/output`. It never reads provider keys or patient records. After publication, verify `/`, `/app`, `/operations`, a static asset and an authenticated API call; a deployment marked Ready alone is not sufficient validation.
 
+## Frosted interface materials
+
+The staff workspace and patient portal use a restrained glassmorphism treatment: a static mint/blue backdrop, translucent cards and navigation, fine highlight borders and soft depth. Dialogs and administrative side panels use a denser material; nested cards, data tables and form fields retain stable reading surfaces. Status colors remain unchanged.
+
+Materials are shared in `apps/web/src/index.css` (`glass-card`, `glass-toolbar`, `glass-sidebar`, `glass-sheet`, `glass-control`). Browsers without backdrop-filter receive opaque fallbacks. Reduced-transparency and increased-contrast preferences remove the effect, Windows forced colors are respected, and print styles remove blur and shadows. No animation or new UI dependency is introduced.
+
 ## Navigation designed around clinic work
 
 The staff menu now separates everyday work, pathway configuration, pilot measurement and administration. Existing bookmarks remain usable.
