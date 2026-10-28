@@ -28,7 +28,7 @@ def get_scoped(db: Session, model: type[M], obj_id: uuid.UUID, p: Principal) -> 
 
 
 def audit(db: Session, p: Principal, action: str, entity: str, entity_id, **detail) -> None:
-    detail = {**detail, "actor_label": p.name or p.email or p.sub}
+    detail = {**detail, "actor_label": p.name or p.email or p.sub, "actor_roles": sorted(p.roles)}
     db.add(m.AuditLog(establishment_id=p.establishment_id, actor=p.sub, action=action,
                       entity=entity, entity_id=str(entity_id), detail=detail))
 

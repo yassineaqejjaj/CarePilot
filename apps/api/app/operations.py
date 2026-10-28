@@ -211,6 +211,41 @@ def worklist(db, p):
     return items
 
 
+def staff_contributor(row):
+    if row.actor.startswith(("patient:", "companion:", "integration:")):
+        return False
+    recorded_roles = row.detail.get("actor_roles")
+    if recorded_roles is not None:
+        return bool(
+            set(recorded_roles) & {"admin", "coordinator", "designer", "viewer"}
+        )
+    # Historical events have no role metadata. Count only actions whose endpoints are staff-only.
+    return row.action.startswith(
+        (
+            "journey.",
+            "task.",
+            "template.",
+            "team.",
+            "setup.",
+            "ai.",
+            "procedure.",
+            "demo.",
+        )
+    ) or row.action in {
+        "document.analyze",
+        "document.download",
+        "support.resolve",
+        "operations.handoff",
+        "operations.insurance",
+        "operations.finance",
+        "operations.message",
+        "operations.note",
+        "operations.reschedule",
+        "operations.reply_read",
+        "operations.profile_validated",
+    }
+
+
 def measures(db, est):
     journeys = list(
         db.scalars(
@@ -290,16 +325,7 @@ def measures(db, est):
                         m.AuditLog.at >= stamp() - dt.timedelta(days=7),
                     )
                 )
-                if not r.actor.startswith(("patient:", "companion:", "integration:"))
-                and r.action
-                not in (
-                    "operations.patient_message",
-                    "operations.profile_requested",
-                    "portal.login",
-                    "portal.submit",
-                    "portal.upload",
-                    "consent.given",
-                )
+                if staff_contributor(r)
             }
         ),
     }

@@ -71,6 +71,21 @@ M3aya Santé (formerly CarePilot) gives clinic teams one place to coordinate nin
 
 ![Operations dashboard](docs/screenshots/01-cockpit.png)
 
+### Reproducible frontend publication
+
+The current frontend is published as an explicit [Vercel Build Output API](https://vercel.com/docs/build-output-api) static package. This checks the generated entry assets and preserves the API proxy, security headers and SPA deep links independently of framework output discovery.
+
+```sh
+cd apps/web
+VITE_KEYCLOAK_URL=https://keycloak-production-a68c.up.railway.app npm run build
+cd ../..
+python scripts/package-web-output.py
+cd apps/web
+npx vercel deploy --prebuilt --prod
+```
+
+The packager reads the backend destination from `apps/web/vercel.json` and copies only the generated public `dist` files into ignored `.vercel/output`. It never reads provider keys or patient records. After publication, verify `/`, `/app`, `/operations`, a static asset and an authenticated API call; a deployment marked Ready alone is not sufficient validation.
+
 ## Administrative operations — release 0.5
 
 **[Open the preparation center](https://carepilot-maroc.vercel.app/operations)**
@@ -391,7 +406,7 @@ export DATABASE_URL=postgresql+psycopg://carepilot:carepilot@localhost:5442/care
 
 The **3 new catalogue Playwright scenarios also passed against production**, covering the nine templates, a reusable maternity example, and explicit imaging template selection.
 
-Validation: **69 pytest tests passed** locally, including real pgvector retrieval. **18 browser scenarios passed locally** for the historical application, public website and new administrative workflows; the authentication/catalogue regression suite also passed. **13 release checks passed against the live Vercel/Railway deployment**, including insurance/financial preparation, limited companion access and the bilingual website/sign-in. All runs use synthetic data only. They cover tenant isolation, patient consent, link lockout, encrypted files, invalid uploads, rights/erasure, retention, CSV simulation/import and human approval. The browser tests mutate synthetic data. `scripts/test-deployed.mjs` runs against the online demo using the owner's ignored credentials file; do not run it against a clinic environment.
+Validation: **70 pytest tests passed** locally, including real pgvector retrieval. **18 browser scenarios passed locally** for the historical application, public website and new administrative workflows; the authentication/catalogue regression suite also passed. **13 release checks passed against the live Vercel/Railway deployment**, including insurance/financial preparation, limited companion access and the bilingual website/sign-in. All runs use synthetic data only. They cover tenant isolation, patient consent, link lockout, encrypted files, invalid uploads, rights/erasure, retention, CSV simulation/import and human approval. The browser tests mutate synthetic data. `scripts/test-deployed.mjs` runs against the online demo using the owner's ignored credentials file; do not run it against a clinic environment.
 
 ### Deployment
 

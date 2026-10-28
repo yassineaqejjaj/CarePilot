@@ -36,7 +36,7 @@ Duplicate suggestions use normalized name and optional birth date inside the cur
 
 ## Pilot measurement
 
-The measurement tab accepts observed task durations, grouped by administrative activity and baseline/pilot cohort. It displays sample sizes and differences of observed averages. Empty cohorts produce no invented gain; there is no causal attribution, automatic annual extrapolation or promised ROI. The network screen compares authorized sites. The legacy analytics estimate remains explicitly labelled as an estimate and links to these observations.
+The measurement tab accepts observed task durations, grouped by administrative activity and baseline/pilot cohort. It displays sample sizes and differences of observed averages. Empty cohorts produce no invented gain; there is no causal attribution, automatic annual extrapolation or promised ROI. The network screen compares authorized sites. The seven-day activity count includes distinct human staff contributors from audit-role metadata; legacy events count only staff-only actions. Patient, companion and integration activity is excluded. The legacy analytics estimate remains explicitly labelled as an estimate and links to these observations.
 
 ## Security and deployment
 

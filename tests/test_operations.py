@@ -602,3 +602,33 @@ def test_patient_can_stop_reminders_without_closing_journey(
         ).status_code
         == 200
     )
+
+
+def test_staff_adoption_excludes_patient_rights_and_support_events(
+    make_est, db_factory
+):
+    est = make_est()
+    with db_factory() as db:
+        for actor, action, detail in [
+            ("staff", "task.complete", {}),
+            ("oidc-patient-uuid", "rights.access_export", {}),
+            ("oidc-patient-uuid", "support.request", {}),
+            (
+                "another-patient",
+                "operations.profile_requested",
+                {"actor_roles": ["patient"]},
+            ),
+            ("integration:demo", "journey.create", {"actor_roles": ["coordinator"]}),
+        ]:
+            db.add(
+                m.AuditLog(
+                    establishment_id=est,
+                    actor=actor,
+                    action=action,
+                    entity="patient",
+                    entity_id="test",
+                    detail=detail,
+                )
+            )
+        db.commit()
+        assert o.measures(db, est)["adoption"] == 1
