@@ -3,7 +3,7 @@ import { login, STAFF } from './helpers';
 
 test('nine pathways and new Moroccan identity are visible',async({page})=>{
  await login(page,STAFF);
- await expect(page.getByText('M3aya Santé',{exact:true}).first()).toBeVisible();
+ await expect(page.getByRole('img',{name:'M3aya Santé | معايا',exact:true}).first()).toBeVisible();
  await page.getByRole('link',{name:'Catalogue de parcours'}).click();
  await expect(page.getByText('9 modèles de référence')).toBeVisible();
  await expect(page.getByRole('button',{name:'Explorer le parcours'})).toHaveCount(9);

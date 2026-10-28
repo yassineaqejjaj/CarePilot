@@ -1,7 +1,53 @@
-# M3aya Santé — معايا
+# M3aya Santé | معايا
 
-**Administrative patient-journey coordination for Moroccan private clinics.**  
-*Every patient. Every step. Connected.*
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/brand/logo-dark.svg" />
+  <img src="apps/web/public/brand/logo-light.svg" alt="M3aya Santé | معايا" width="220" />
+</picture>
+
+**Your care journey. Our support.**
+
+[Notre vision — français](docs/vision.fr.md) · [Brand assets](apps/web/public/brand/README.md)
+
+## Our vision
+
+**To make M3aya Santé the reference platform for patient-journey coordination in Morocco, placing people, simplicity and artificial intelligence at the heart of every step.**
+
+*معايا* (“with me” in Moroccan Darija) expresses our conviction: no patient should have to navigate the administrative complexity of care alone.
+
+### The problem we solve
+
+Care journeys are often fragmented across patients, healthcare facilities, professionals and insurers. Missing documents, poorly coordinated appointments, manual reminders and limited visibility cause delays, administrative workload and a poorer patient experience.
+
+### Our solution
+
+**M3aya Santé is an intelligent patient-coordination and support platform**, designed for Moroccan clinics, hospitals and healthcare facilities. It combines process automation, AI agents and human oversight to:
+
+- **Support patients** before, during and after care through a bilingual French/Arabic portal.
+- **Automate administrative tasks:** document collection, checks, reminders and deadline tracking.
+- **Assist clinical and administrative teams** by identifying incomplete files, drafting communications and proposing next actions.
+- **Centralize information** to provide an up-to-date view of each patient journey.
+- **Support traceability and data protection**, with an approach adapted to Morocco’s regulatory context.
+
+### One platform, nine care pathways
+
+Our ambition covers medical consultation, medical imaging, endoscopy, ambulatory surgery, planned hospitalization, maternity, day hospital, rehabilitation and unplanned admission. Each pathway can have its own steps, documents, follow-up rules and communications within a shared platform. The current administrative reference templates are detailed below.
+
+### Our approach to AI
+
+**AI supports. Professionals stay in control.**
+
+Our AI agents are designed to help teams with administrative work, anticipate bottlenecks and facilitate patient communication. They replace neither clinical judgment nor healthcare professionals’ decisions.
+
+### Our ambition
+
+Build a digital infrastructure that progressively connects patients, healthcare facilities and administrative partners around a continuous, personalized and coordinated journey.
+
+**Less paperwork. Less waiting. More time for care.**
+
+This vision describes the product’s direction. The demonstration limits below describe what is available today.
+
+## Try the current application
 
 [Product walkthrough](https://github.com/user-attachments/assets/f6f8542e-7ebe-4b5e-8892-dd34fc8fe758)
 

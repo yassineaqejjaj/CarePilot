@@ -6,7 +6,7 @@ import { displayName, logout, patientSession, roles } from "@/auth";
 import { api } from "@/lib/api";
 import { roleLabel } from "@/lib/format";
 import type { Cockpit, Me } from "@/lib/types";
-import { Avatar, Logo } from "@/components/ui";
+import { Avatar, BrandLogo } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import CockpitPage from "@/pages/Cockpit";
 import JourneysPage from "@/pages/Journeys";
@@ -56,8 +56,8 @@ function Sidebar({ canDesign, tasks, journeys, validation }: { canDesign: boolea
   ];
   return (
     <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col overflow-y-auto border-r border-line bg-white px-3 py-4 lg:flex">
-      <div className="mb-5 flex items-center gap-2.5 px-2">
-        <Logo /><div className="leading-tight"><span className="text-lg font-semibold text-navy-900">M3aya <span className="text-teal-700">Santé</span></span><p className="mt-0.5 text-meta text-ink-2" lang="ar">معايا · à chaque étape</p></div>
+      <div className="mb-5 flex flex-col items-center px-2">
+        <BrandLogo /><p className="mt-1 text-center text-[11px] text-ink-2">Votre parcours de soins.<br />Notre accompagnement.</p>
       </div>
       {groups.map((g) => (
         <nav key={g.title} aria-label={g.title} className="mb-4">

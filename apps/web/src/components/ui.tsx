@@ -67,15 +67,12 @@ export const Avatar = ({ name, className }: { name: string; className?: string }
   </span>
 );
 
-/* ---- Logo (symbole « trajet guidé ») ---- */
+/* Supplied brand artwork, displayed through lossless SVG viewports. */
 export const Logo = ({ size = 32 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden>
-    <rect width="32" height="32" rx="9" fill="#14263D" />
-    <path d="M9 23C9 17 16 20 16 16C16 12 23 15 23 9" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
-    <circle cx="9" cy="23" r="2.6" fill="#14263D" stroke="#FFFFFF" strokeWidth="1.8" />
-    <circle cx="16" cy="16" r="2.2" fill="#14263D" stroke="#FFFFFF" strokeWidth="1.8" />
-    <circle cx="23" cy="9" r="3.2" fill="#3CC2B0" />
-  </svg>
+  <img src="/brand/favicon.svg" width={size} height={size} alt="M3aya Santé" className="shrink-0 object-contain" />
+);
+export const BrandLogo = ({ variant = "light", className = "" }: { variant?: "light" | "dark"; className?: string }) => (
+  <img src={`/brand/logo-${variant}.svg`} width="165" height="160" alt="M3aya Santé | معايا" className={cn("object-contain", className)} />
 );
 export const TraceMark = ({ size = 14 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden>
