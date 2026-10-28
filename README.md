@@ -73,7 +73,9 @@ M3aya Santé (formerly CarePilot) gives clinic teams one place to coordinate nin
 
 ### Reproducible frontend publication
 
-The current frontend is published as an explicit [Vercel Build Output API](https://vercel.com/docs/build-output-api) static package. This checks the generated entry assets and preserves the API proxy, security headers and SPA deep links independently of framework output discovery.
+The Vercel project must use **root directory `apps/web`**, framework **Vite**, build command **`npm run build`**, install command **`npm ci`**, and output directory **`dist`**. These settings are configured for the connected GitHub project, and the public `VITE_KEYCLOAK_URL` is set in the production environment. Building from the monorepo root can publish no frontend files and overwrite a working deployment.
+
+An explicit [Vercel Build Output API](https://vercel.com/docs/build-output-api) static package is also available as a reproducible publication/recovery path. This checks the generated entry assets and preserves the API proxy, security headers and SPA deep links independently of framework output discovery.
 
 ```sh
 cd apps/web
