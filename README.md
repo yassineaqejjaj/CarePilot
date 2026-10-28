@@ -108,6 +108,8 @@ The assistant currently uses deterministic retrieval of approved procedure cards
 
 ### Extra validation and setup
 
+**Verified online:** all six new browser scenarios passed on the Vercel/Railway deployment, including actual synthetic microphone capture, server-local transcription, editable review, PDF reading, human validation, live refresh, action-plan preparation and patient handoff. All 14 pre-existing online journeys were retained; tests add separate fictional dossiers.
+
 `pytest` includes scope, encryption, no-automatic-validation, stale-plan, duplicate-plan, procedure-version, handoff and simulation-isolation tests. `e2e/wow.spec.ts` adds browser scenarios without resetting the demo. Microphone testing uses a generated fictional English recording; this verifies capture/transcription/review, not Darija accuracy.
 
 The Docker API image includes Tesseract, Poppler, FFmpeg and the speech model; its first build downloads public model weights. For a host-run API, install the system OCR/audio tools and set `VOICE_MODEL_PATH` to a local compatible faster-whisper model directory. If unavailable, document review stays manual and dictation is disabled with an explanation. `DEMO_MODE=true` is required for guided scenarios. Existing dossiers are retained by the additive `0002` migration.
@@ -258,7 +260,7 @@ export DATABASE_URL=postgresql+psycopg://carepilot:carepilot@localhost:5442/care
 (cd apps/web && npm run e2e)
 ```
 
-Validation: **37 pytest tests passed** locally, including real pgvector retrieval; **10 original Playwright scenarios passed locally and against the live Vercel/Railway deployment** on 28 October 2026. They cover tenant isolation, patient consent, link lockout, encrypted files, invalid uploads, rights/erasure, retention, CSV simulation/import and human approval. The browser tests mutate synthetic data. `scripts/test-deployed.mjs` runs against the online demo using the owner's ignored credentials file; do not run it against a clinic environment.
+Validation: **48 pytest tests passed** locally, including real pgvector retrieval; **10 original Playwright scenarios passed locally and against the live Vercel/Railway deployment** on 28 October 2026. They cover tenant isolation, patient consent, link lockout, encrypted files, invalid uploads, rights/erasure, retention, CSV simulation/import and human approval. The browser tests mutate synthetic data. `scripts/test-deployed.mjs` runs against the online demo using the owner's ignored credentials file; do not run it against a clinic environment.
 
 ### Deployment
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { NavLink, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3, Bell, Bot, Building2, CheckSquare, ChevronDown, FileText, GitBranch, LayoutDashboard, Layers, LogOut, MessageSquare, Route as RouteIcon, Search, Settings as SettingsIcon, ShieldCheck, Users, type LucideIcon } from "lucide-react";
@@ -12,8 +12,6 @@ import CockpitPage from "@/pages/Cockpit";
 import JourneysPage from "@/pages/Journeys";
 import JourneyDetailPage from "@/pages/JourneyDetail";
 import ValidationPage from "@/pages/Validation";
-import Designer from "@/pages/Designer";
-import Analytics from "@/pages/Analytics";
 import Agents from "@/pages/Agents";
 import Portal from "@/pages/Portal";
 import PatientEntry from "@/pages/PatientEntry";
@@ -21,11 +19,14 @@ import Tasks from "@/pages/Tasks";
 import Communications from "@/pages/Communications";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
-import Copilot from "@/pages/Copilot";
-import GuidedDemo from "@/pages/GuidedDemo";
-import Procedures from "@/pages/Procedures";
 import { LiveUpdates, LiveBadge } from "@/lib/live";
 import ComingSoon from "@/pages/ComingSoon";
+
+const Designer = lazy(() => import("@/pages/Designer"));
+const Analytics = lazy(() => import("@/pages/Analytics"));
+const Copilot = lazy(() => import("@/pages/Copilot"));
+const GuidedDemo = lazy(() => import("@/pages/GuidedDemo"));
+const Procedures = lazy(() => import("@/pages/Procedures"));
 
 type Item = { to: string; label: string; icon: React.ReactNode; badge?: number | string; tone?: "red" | "mint" };
 
@@ -128,6 +129,7 @@ function StaffApp() {
         <LiveUpdates />
         <Topbar me={me.data} pending={cockpit.data?.validation_pending} />
         <main className="mx-auto max-w-[1180px] px-6 py-6">
+          <Suspense fallback={<p role="status" className="p-6 text-ink-2">Chargement…</p>}>
           <Routes>
             <Route path="/" element={<CockpitPage />} />
             <Route path="/parcours" element={<JourneysPage />} />
@@ -147,6 +149,7 @@ function StaffApp() {
               <Route key={p} path={`/${p}`} element={<ComingSoon title={t} />} />)}
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
+          </Suspense>
         </main>
       </div>
     </div>
