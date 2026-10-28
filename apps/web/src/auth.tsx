@@ -7,8 +7,10 @@ const kc = new Keycloak({
   clientId: import.meta.env.VITE_KEYCLOAK_CLIENT ?? "carepilot-web",
 });
 
+const requestedLocale = new URLSearchParams(window.location.search).get("lang");
+const locale = requestedLocale === "ar" || requestedLocale === "fr" ? requestedLocale : undefined;
 let ready: Promise<boolean> | null = null;
-export const initAuth = () => (ready ??= kc.init({ onLoad: "login-required", pkceMethod: "S256", checkLoginIframe: false }));
+export const initAuth = () => (ready ??= kc.init({ onLoad: "login-required", pkceMethod: "S256", checkLoginIframe: false, locale }));
 
 // Session patient (lien sécurisé) : jeton court gardé en sessionStorage, jamais en localStorage.
 const KEY = "cp_patient_session";

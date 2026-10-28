@@ -24,5 +24,6 @@ client["redirectUris"] = [f"{front}/*", "http://localhost:5173/*"]
 client["webOrigins"] = [front, "http://localhost:5173"]
 (out / "carepilot-realm.json").write_text(json.dumps(realm, indent=2, ensure_ascii=False))
 shutil.copy(src / "Dockerfile", out / "Dockerfile")
+shutil.copytree(src / "themes", out / "themes", dirs_exist_ok=True)
 (out / "credentials.txt").write_text("\n".join(f"{k} / {v}" for k, v in creds.items()) + "\n")
 print("realm généré pour", front)

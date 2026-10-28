@@ -11,7 +11,7 @@ services:
     image: quay.io/keycloak/keycloak:25.0
     command: start-dev --import-realm
     environment: {KEYCLOAK_ADMIN: admin, KEYCLOAK_ADMIN_PASSWORD: admin}
-    volumes: ["./infrastructure/keycloak:/opt/keycloak/data/import:ro"]
+    volumes: ["./infrastructure/keycloak/carepilot-realm.json:/opt/keycloak/data/import/carepilot-realm.json:ro", "./infrastructure/keycloak/themes:/opt/keycloak/themes:ro"]
     ports: ["${KEYCLOAK_PORT:-8080}:8080"]
   api:
     build: {context: ., dockerfile: Dockerfile.api}

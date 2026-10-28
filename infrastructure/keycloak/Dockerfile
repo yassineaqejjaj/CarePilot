@@ -8,6 +8,7 @@ RUN /opt/keycloak/bin/kc.sh build
 FROM quay.io/keycloak/keycloak:25.0
 COPY --from=build /opt/keycloak/ /opt/keycloak/
 COPY carepilot-realm.json /opt/keycloak/data/import/carepilot-realm.json
+COPY themes/ /opt/keycloak/themes/
 ENV KC_HTTP_ENABLED=true KC_PROXY_HEADERS=xforwarded KC_HOSTNAME_STRICT=false
 # KC_HOSTNAME (URL publique complète, ex. https://auth.example.com) et KC_HTTP_PORT sont fournis à l'exécution
 ENTRYPOINT ["/opt/keycloak/bin/kc.sh", "start", "--optimized", "--import-realm"]

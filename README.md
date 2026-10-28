@@ -71,6 +71,22 @@ M3aya Santé (formerly CarePilot) gives clinic teams one place to coordinate nin
 
 ![Operations dashboard](docs/screenshots/01-cockpit.png)
 
+## A familiar, bilingual sign-in experience
+
+The Keycloak login page now follows the M3aya Santé design system: a compact supplied logo, navy/teal palette, Manrope and IBM Plex Sans Arabic, French/Arabic switching and RTL layout. Desktop pairs a journey illustration with the form; mobile prioritizes sign-in. Password-manager autocomplete, password visibility, native errors, keyboard navigation and the existing OIDC/PKCE flow are retained. The landing page carries the selected language through to sign-in.
+
+![French sign-in](docs/screenshots/22-authentication-fr.png)
+
+<details><summary>Arabic and mobile previews</summary>
+
+![Arabic sign-in](docs/screenshots/23-authentication-ar.png)
+
+<img src="docs/screenshots/24-authentication-mobile.png" alt="Mobile sign-in" width="300" />
+
+</details>
+
+**Validation:** eight production browser checks passed across the theme, language handoff, staff cockpit and patient access. The existing demo accounts and passwords are unchanged. See [authentication theme, installation and rollback](docs/authentication.md) for the implementation and deployment limitations. The layout follows contemporary web patterns and accessibility practices; no future-year standard or accessibility certification is claimed.
+
 ## Nine clinic reference pathways
 
 ![M3aya Santé pathway catalogue](docs/screenshots/17-catalogue-m3aya.png)

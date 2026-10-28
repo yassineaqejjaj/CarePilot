@@ -136,5 +136,12 @@
     ]
   },
   "displayName": "M3aya Santé",
-  "displayNameHtml": "M3aya Santé · معايا"
+  "displayNameHtml": "M3aya Santé · معايا",
+  "loginTheme": "m3aya",
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "fr",
+    "ar"
+  ],
+  "defaultLocale": "fr"
 }
