@@ -74,7 +74,7 @@
     {
       "username": "staff.demo",
       "enabled": true,
-      "email": "coord@example.test",
+      "email": "salma@clinique-atlas.example",
       "attributes": {
         "establishment_id": [
           "00000000-0000-0000-0000-000000000001"
@@ -93,13 +93,13 @@
         "admin"
       ],
       "emailVerified": true,
-      "firstName": "Claire",
-      "lastName": "Dubois"
+      "firstName": "Salma",
+      "lastName": "El Idrissi"
     },
     {
       "username": "patient.demo",
       "enabled": true,
-      "email": "patient@example.test",
+      "email": "khadija@example.test",
       "attributes": {
         "establishment_id": [
           "00000000-0000-0000-0000-000000000001"
@@ -119,8 +119,8 @@
         "patient"
       ],
       "emailVerified": true,
-      "firstName": "Sophie",
-      "lastName": "Martin"
+      "firstName": "Khadija",
+      "lastName": "Alaoui"
     }
   ],
   "components": {

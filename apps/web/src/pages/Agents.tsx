@@ -18,6 +18,7 @@ export default function Agents() {
     <div className="space-y-5">
       <div className="flex items-center gap-3"><h1 className="text-[28px] font-semibold tracking-tight">Agents IA</h1>
         <Pill tone={me.data?.ai_enabled ? "success" : "warning"}>{me.data?.ai_enabled ? "IA activée" : "IA désactivée"}</Pill></div>
+      {me.data?.ai_blocked_reason && <p className="rounded-card bg-warning-bg p-3 text-warning-text">{me.data.ai_blocked_reason}</p>}
       <p className="text-ink-2">Aucune décision médicale. Aucun envoi sans validation humaine. Les données patient directement identifiantes ne sont jamais transmises au modèle.</p>
       <div className="grid gap-4 md:grid-cols-2">
         {AGENTS.map(([k, t, d]) => {
@@ -26,7 +27,7 @@ export default function Agents() {
             <p className="mt-3 text-meta tabular-nums text-ink-2">{u ? `${u.calls} appels ce mois · ${u.input_tokens + u.output_tokens} tokens · ${u.cost_eur.toFixed(4)} €` : "Aucun appel ce mois"}</p></Card>);
         })}
       </div>
-      <p className="rounded-card bg-surface-2 p-3 text-meta text-ink-2">Dans cette démonstration en ligne, aucune clé OpenAI n'est configurée : les propositions affichées sont des données de démo préparées à l'avance.</p>
+      <p className="rounded-card bg-surface-2 p-3 text-meta text-ink-2">Dans cette démonstration en ligne, aucune clé OpenAI n'est configurée : les propositions affichées sont préparées à l'avance (modèles approuvés ou données de démo).</p>
     </div>
   );
 }

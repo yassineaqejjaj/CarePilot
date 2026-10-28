@@ -5,7 +5,7 @@ import type { Proposal } from "@/lib/types";
 import { useProposal } from "@/lib/useProposal";
 import { AiTag, Button, Card, EmptyState, ErrorState, Skeleton } from "@/components/ui";
 
-const DOC: Record<string, string> = { piece_identite: "pièce d'identité", carte_vitale: "Carte Vitale", mutuelle: "attestation de mutuelle", consentement_admin: "consentement administratif", questionnaire_admission: "questionnaire d'admission" };
+const DOC: Record<string, string> = { cin: "CIN ou passeport", attestation_amo: "attestation AMO", mutuelle: "prise en charge mutuelle / assurance", consentement_admin: "consentement administratif", questionnaire_admission: "questionnaire d'admission" };
 const KIND: Record<string, string> = { message_draft: "Message à valider", verification: "Vérification administrative", followup: "Réponse patient classée", summary: "Synthèse" };
 
 export default function ValidationPage() {
@@ -20,7 +20,7 @@ export default function ValidationPage() {
           {data.map((p) => (
             <Card key={p.id} className="p-5">
               <div className="flex items-center gap-3"><AiTag /><span className="font-semibold text-navy-900">{KIND[p.kind] ?? p.kind}</span></div>
-              {p.kind === "message_draft" ? <blockquote className="mt-3 whitespace-pre-wrap rounded-card border border-line bg-page p-4">{p.payload.body}</blockquote> : (
+              {p.kind === "message_draft" ? <blockquote dir="auto" className="mt-3 whitespace-pre-wrap rounded-card border border-line bg-page p-4">{p.payload.body}</blockquote> : (
                 <div className="mt-3"><p>{p.payload.summary}</p>
                   {p.payload.missing_documents?.length > 0 && <p className="mt-2 text-ink-2">Pièces manquantes : {p.payload.missing_documents.map((c: string) => DOC[c] ?? c).join(", ")}</p>}
                   <ul className="mt-2 list-disc pl-5">{(p.payload.anomalies ?? []).map((x: string) => <li key={x}>{x}</li>)}</ul></div>)}

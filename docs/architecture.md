@@ -1,7 +1,7 @@
 # CarePilot — Architecture (Phase 1)
 
-> Statut : MVP technique. Cette architecture **n'est pas** présentée comme conforme RGPD / HDS.
-> Voir `docs/security.md` pour les prérequis juridiques avant tout traitement de données réelles.
+> Statut : MVP technique, adapté au Maroc (loi 09-08, CNDP). Cette architecture n'est pas présentée comme conforme tant que l'autorisation CNDP n'est pas obtenue : voir `compliance-morocco.md`.
+> Voir `docs/security.md` pour les mesures techniques.
 
 ## 1. Vue d'ensemble
 

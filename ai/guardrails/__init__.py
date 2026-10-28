@@ -1,5 +1,6 @@
 """Garde-fous : redaction d'identifiants directs, blocage de contenu médical, périmètre des sorties.
 
+Adapté au Maroc : CIN, numéros +212, numéros CNSS/CNOPS, e-mail.
 Limite connue : la redaction par regex ne détecte PAS les noms propres en texte libre.
 Elle réduit le risque, elle ne l'élimine pas ; d'où la règle « données fictives uniquement »
 tant que la validation juridique n'est pas faite.
@@ -10,9 +11,12 @@ import re
 
 _PATTERNS = {
     "EMAIL": re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+"),
-    # NIR français : 13 chiffres + clé de 2 (espaces tolérés)
-    "NIR": re.compile(r"\b[12]\s?\d{2}\s?\d{2}\s?(?:\d{2}|2[AB])\s?\d{3}\s?\d{3}(?:\s?\d{2})?\b"),
-    "PHONE": re.compile(r"(?<!\d)(?:\+33\s?|0)[1-9](?:[\s.-]?\d{2}){4}(?!\d)"),
+    # CIN marocaine : 1 à 2 lettres suivies de 5 à 8 chiffres (ex. AB123456, K123456)
+    "CIN": re.compile(r"\b[A-Za-z]{1,2}\s?\d{5,8}\b"),
+    # Téléphone marocain : +212 / 00212 / 0 suivi de 5, 6, 7 ou 8 puis 8 chiffres (séparateurs tolérés)
+    "PHONE": re.compile(r"(?<![\w])(?:\+212|00212|0)[\s.-]?[5-8](?:[\s.-]?\d){8}(?!\d)"),
+    # Numéro d'immatriculation CNSS / CNOPS : suite de 9 à 12 chiffres
+    "SOCIAL_ID": re.compile(r"(?<!\d)\d{9,12}(?!\d)"),
 }
 
 MEDICAL_ADVICE_TERMS = (

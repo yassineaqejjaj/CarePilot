@@ -4,7 +4,7 @@ import datetime as dt
 import uuid
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, TypeDecorator
+from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, LargeBinary, String, Text, TypeDecorator
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.core import get_settings
@@ -39,6 +39,12 @@ class Establishment(Base):
     name: Mapped[str] = mapped_column(String(200))
     ai_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     monthly_token_budget: Mapped[int] = mapped_column(Integer, default=2_000_000)
+    city: Mapped[str] = mapped_column(String(100), default="")
+    # Loi 09-08 : référence de l'autorisation CNDP du traitement et, le cas échéant, du transfert à l'étranger
+    cndp_ref: Mapped[str] = mapped_column(String(100), default="")
+    cndp_transfer_ref: Mapped[str] = mapped_column(String(100), default="")
+    dpo_contact: Mapped[str] = mapped_column(String(200), default="")  # contact pour exercer accès / rectification / opposition
+    retention_days: Mapped[int] = mapped_column(Integer, default=365)  # après clôture du parcours
 
 
 class Patient(Base):
@@ -51,6 +57,10 @@ class Patient(Base):
     last_name: Mapped[str] = mapped_column(String(100))
     email: Mapped[str] = mapped_column(String(200), default="")
     birth_date: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
+    phone: Mapped[str] = mapped_column(String(20), default="")  # E.164, ex. +212612345678
+    language: Mapped[str] = mapped_column(String(5), default="fr")  # fr | ar
+    preferred_channel: Mapped[str] = mapped_column(String(10), default="whatsapp")  # whatsapp | sms | email
+    anonymized_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class JourneyTemplate(Base):
@@ -110,6 +120,7 @@ class Task(Base):
     reminders: Mapped[int] = mapped_column(Integer, default=0)
     owner: Mapped[str | None] = mapped_column(String(100), nullable=True)
     detail: Mapped[str] = mapped_column(Text, default="")
+    last_reminder_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     response: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # réponse patient (questionnaire / pièce)
     journey: Mapped[PatientJourney] = relationship(back_populates="tasks")
 
@@ -168,4 +179,83 @@ class AIProposal(Base):
     payload: Mapped[dict] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | approved | rejected
     decided_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Consent(Base):
+    """Consentement du patient au traitement (loi 09-08, art. 4 et 5), versionné avec la notice affichée."""
+    __tablename__ = "consent"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    patient_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patient.id"), index=True)
+    purpose: Mapped[str] = mapped_column(String(60), default="administrative_follow_up")
+    notice_version: Mapped[str] = mapped_column(String(20))
+    channel: Mapped[str] = mapped_column(String(20), default="portal")
+    given_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class DataRequest(Base):
+    """Exercice des droits : accès, rectification, opposition, suppression."""
+    __tablename__ = "data_request"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    patient_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patient.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(20))  # access | rectification | opposition | deletion
+    message: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(20), default="open")  # open | done | rejected
+    resolution: Mapped[str] = mapped_column(Text, default="")
+    resolved_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    resolved_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Invitation(Base):
+    """Lien d'accès patient à usage limité : seul le hash du jeton est stocké."""
+    __tablename__ = "invitation"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    patient_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patient.id"), index=True)
+    journey_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patient_journey.id"))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True))
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class StoredFile(Base):
+    """Contenu chiffré (Fernet) d'un fichier patient, quand le backend de stockage est « db »."""
+    __tablename__ = "stored_file"
+    key: Mapped[str] = mapped_column(String(80), primary_key=True)
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+
+
+class Document(Base):
+    __tablename__ = "document"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    journey_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patient_journey.id"), index=True)
+    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("task.id"), index=True)
+    filename: Mapped[str] = mapped_column(String(200))
+    content_type: Mapped[str] = mapped_column(String(60))
+    size: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(String(64))
+    storage_key: Mapped[str] = mapped_column(String(80))
+    uploaded_by: Mapped[str] = mapped_column(String(20), default="patient")
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class MessageLog(Base):
+    """Journal des envois (SMS / WhatsApp / e-mail) : preuve de ce qui est parti, et à qui (numéro masqué)."""
+    __tablename__ = "message_log"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    journey_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("patient_journey.id"), nullable=True, index=True)
+    patient_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("patient.id"), nullable=True)
+    kind: Mapped[str] = mapped_column(String(30))  # reminder | invitation | info
+    channel: Mapped[str] = mapped_column(String(10))
+    to_masked: Mapped[str] = mapped_column(String(60), default="")
+    subject: Mapped[str] = mapped_column(String(200), default="")
+    status: Mapped[str] = mapped_column(String(12))  # simulated | sent | failed
+    provider_ref: Mapped[str] = mapped_column(String(80), default="")
+    error: Mapped[str] = mapped_column(String(300), default="")
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)

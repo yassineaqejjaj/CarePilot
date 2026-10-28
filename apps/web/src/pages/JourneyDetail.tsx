@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { Check, ChevronRight, Circle, FileText } from "lucide-react";
-import { api } from "@/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, ChevronRight, Circle, FileText, Send } from "lucide-react";
+import { ApiError, api, download } from "@/lib/api";
 import type { JourneyDetail } from "@/lib/types";
 import { useProposal } from "@/lib/useProposal";
 import { dateTime, dayMonth, longDate } from "@/lib/format";
@@ -17,6 +17,16 @@ export default function JourneyDetailPage() {
   const toast = useToast();
   const { approve, reject } = useProposal();
   const [confirm, setConfirm] = useState(false);
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState<string | null>(null);
+  const [invite, setInvite] = useState<null | { status: string; channel: string; to: string; error: string; link?: string }>(null);
+  const refresh = () => ["journey", "cockpit", "journeys", "tasks"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+  const inviteM = useMutation({ mutationFn: () => api<NonNullable<typeof invite>>(`/journeys/${id}/invite`, { method: "POST" }), onSuccess: (r) => { setInvite(r); refresh(); },
+    onError: (e) => toast({ tone: "critical", title: "Invitation impossible", text: e instanceof ApiError ? e.detail : undefined }) });
+  const editM = useMutation({ mutationFn: ({ pid, body }: { pid: string; body: string }) => api(`/ai/proposals/${pid}`, { method: "PATCH", body: JSON.stringify({ body }) }),
+    onSuccess: () => { setEditing(null); refresh(); toast({ tone: "success", title: "Message modifié" }); } });
+  const docM = useMutation({ mutationFn: ({ tid, action }: { tid: string; action: "complete" | "reject" }) => api(`/tasks/${tid}/${action}`, { method: "POST", body: JSON.stringify({ reason: "À renvoyer" }) }),
+    onSuccess: (_r, v) => { refresh(); toast({ tone: v.action === "complete" ? "success" : "warning", title: v.action === "complete" ? "Pièce validée" : "Pièce redemandée au patient" }); } });
   const { data: d, error, refetch } = useQuery({ queryKey: ["journey", id], queryFn: () => api<JourneyDetail>(`/journeys/${id}/detail`) });
   if (error) return <ErrorState onRetry={refetch} />;
   if (!d) return <div className="space-y-4"><Skeleton className="h-10 w-1/2" /><Skeleton className="h-32" /><Skeleton className="h-96" /></div>;
@@ -36,6 +46,7 @@ export default function JourneyDetailPage() {
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-[28px] font-semibold tracking-tight">{d.patient.name}</h1>
           <Pill tone={STATE_TONE[d.state]}>{d.state_label}</Pill>
+          <Button className="ml-auto" variant="secondary" size="sm" disabled={inviteM.isPending} onClick={() => inviteM.mutate()}><Send size={14} />Envoyer le lien patient</Button>
         </div>
         <p className="mt-1 text-meta tabular-nums text-ink-2">
           {d.patient.birth_date ? `Né(e) le ${new Date(d.patient.birth_date + "T12:00:00").toLocaleDateString("fr-FR")} · ` : ""}{d.reference} · Patient fictif
@@ -59,7 +70,10 @@ export default function JourneyDetailPage() {
               <h2 className="mt-3 text-[22px] font-semibold">Relancer {d.patient.name.split(" ")[0]} pour son {na.payload.subject?.replace(/^Votre /, "").toLowerCase()}</h2>
               <p className="mt-1 text-ink-2">Relance préparée à partir d'un modèle approuvé, à relire avant envoi.</p>
               <p className="mt-2 text-meta text-ink-2">Canal : {na.payload.channel ?? "SMS + e-mail"} · Envoi : immédiat après validation · Modèle : {na.payload.model ?? "—"}</p>
-              <blockquote className="mt-3 whitespace-pre-wrap rounded-card border border-line bg-white p-4">{na.payload.body}</blockquote>
+              {editing !== null ? (
+                <div className="mt-3 space-y-2"><textarea aria-label="Texte du message" className="min-h-40 w-full rounded-card border border-line-strong p-3" value={editing} maxLength={2000} onChange={(e) => setEditing(e.target.value)} dir="auto" />
+                  <div className="flex gap-2"><Button size="sm" disabled={editM.isPending} onClick={() => editM.mutate({ pid: na.proposal_id, body: editing })}>Enregistrer</Button><Button size="sm" variant="secondary" onClick={() => setEditing(null)}>Annuler</Button></div></div>
+              ) : <blockquote dir="auto" className="mt-3 whitespace-pre-wrap rounded-card border border-line bg-white p-4">{na.payload.body}</blockquote>}
             </>
           ) : (
             <>
@@ -69,7 +83,7 @@ export default function JourneyDetailPage() {
             </>)}
           <div className="mt-4 flex gap-2">
             <Button variant="danger" onClick={() => reject.mutate(na.proposal_id)} disabled={reject.isPending}>Rejeter</Button>
-            <Button variant="secondary" onClick={() => toast({ tone: "warning", title: "Modification du texte", text: "Non disponible dans cette démo : rejetez et relancez la préparation." })}>Modifier</Button>
+            <Button variant="secondary" disabled={na.kind !== "message_draft"} onClick={() => setEditing(na.payload.body ?? "")}>Modifier</Button>
             <Button onClick={() => setConfirm(true)}>Approuver et envoyer</Button>
           </div>
         </section>)}
@@ -105,7 +119,10 @@ export default function JourneyDetailPage() {
             <p className="text-ink-2">{d.progress.done} validés sur {d.progress.total} · {d.progress.missing} manquant{d.progress.missing > 1 ? "s" : ""}</p>
             <ul className="mt-3 divide-y divide-line">
               {d.documents.map((x) => (
-                <li key={x.id} className="flex items-center gap-3 py-2.5"><FileText size={16} className="text-ink-2" /><span className="flex-1">{x.title}</span><Pill tone={DOC_TONE[x.status]}>{x.status}</Pill></li>))}
+                <li key={x.id} className="flex flex-wrap items-center gap-2 py-2.5"><FileText size={16} className="text-ink-2" /><span className="min-w-0 flex-1">{x.title}</span><Pill tone={DOC_TONE[x.status]}>{x.status}</Pill>
+                  {x.file_id && <Button size="sm" variant="ghost" onClick={() => download(`/documents/${x.file_id}/download`, x.file_name ?? "piece").catch(() => toast({ tone: "critical", title: "Téléchargement impossible" }))}>Voir</Button>}
+                  {x.status === "En revue" && <><Button size="sm" variant="secondary" disabled={docM.isPending} onClick={() => docM.mutate({ tid: x.id, action: "complete" })}>Valider</Button>
+                    <Button size="sm" variant="ghost" disabled={docM.isPending} onClick={() => docM.mutate({ tid: x.id, action: "reject" })}>Redemander</Button></>}</li>))}
             </ul>
           </Card>
           <Card className="p-5">
@@ -120,9 +137,19 @@ export default function JourneyDetailPage() {
         </div>
       </div>
 
+      {invite && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4" role="dialog" aria-modal="true" aria-label="Lien patient">
+          <div className="w-full max-w-lg rounded-panel bg-white p-6 shadow-modal">
+            <h2 className="text-lg font-semibold">Lien patient</h2>
+            <p className="mt-2 text-ink-2">{invite.status === "sent" ? `Lien envoyé par ${invite.channel} à ${invite.to}.` : invite.status === "simulated" ? `Démo : envoi simulé (${invite.channel} · ${invite.to}). Transmettez le lien vous-même :` : `L'envoi a échoué (${invite.error || "erreur"}). Transmettez le lien vous-même :`}</p>
+            {invite.link && <input readOnly aria-label="Lien" className="mt-3 w-full rounded-ctl border border-line-strong bg-surface-2 p-2 text-meta" value={invite.link} onFocus={(e) => e.target.select()} />}
+            <p className="mt-2 text-meta text-ink-2">Le lien est personnel, valable 72 h ; le patient doit confirmer sa date de naissance (5 essais maximum).</p>
+            <div className="mt-4 flex justify-end"><Button onClick={() => setInvite(null)}>Fermer</Button></div>
+          </div>
+        </div>)}
       <Confirm open={confirm} title="Approuver et envoyer cette relance ?" confirmLabel="Approuver et envoyer" busy={approve.isPending}
         onCancel={() => setConfirm(false)} onConfirm={() => na && approve.mutate(na.proposal_id, { onSettled: () => setConfirm(false) })}>
-        Vous validez ce message en votre nom. <strong>Démo :</strong> l'envoi par SMS et e-mail est simulé, aucun message réel n'est envoyé.
+        Vous validez ce message en votre nom ; il sera envoyé au patient sur son canal préféré. <strong>En démonstration</strong> (messagerie simulée), rien ne part réellement.
       </Confirm>
     </div>
   );

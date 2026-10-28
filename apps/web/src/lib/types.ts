@@ -17,15 +17,16 @@ export type JourneyDetail = {
   patient: { name: string; ref: string; birth_date: string | null };
   progress: { done: number; total: number; pct: number; missing: number };
   timeline: { id: string; label: string; title: string; status: "done" | "action" | "upcoming"; due_date: string; owner: string; detail: string }[];
-  documents: { id: string; title: string; status: "Validé" | "En revue" | "Manquant"; due_date: string }[];
+  documents: { id: string; title: string; status: "Validé" | "En revue" | "Manquant"; due_date: string; file_id: string | null; file_name: string | null }[];
   activity: { at: string; tag: string; text: string; actor: string }[];
   next_action: { proposal_id: string; kind: string; payload: Record<string, any> } | null;
 };
 export type Proposal = { id: string; agent: string; kind: string; payload: Record<string, any>; status: string };
-export type Me = { establishment: string; roles: string[]; ai_enabled: boolean };
+export type Notice = { version: string; controller: string; city: string; rights_contact: string; cndp_ref: string; transfer_ref: string; retention_days: number };
 export type Portal = {
-  first_name: string; establishment: string;
+  first_name: string; language: "fr" | "ar"; establishment: string; consent_required: boolean; notice: Notice;
   journeys: { journey_id: string; surgery_date: string; procedure: string; admission_time: string; progress: { done: number; total: number };
     tasks: { id: string; title: string; kind: string; due_date: string; status: "todo" | "submitted" | "done"; can_submit: boolean }[];
     messages: { subject: string; body: string }[] }[];
 };
+export type Me = { establishment: string; roles: string[]; ai_enabled: boolean; ai_blocked_reason: string; cndp_ref: string };

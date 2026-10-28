@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import models as m
+from app.core import today as _today
 
 PRIORITY_LABEL = {"urgent": "Urgente", "high": "Haute", "medium": "Moyenne", "ready": "Prêt à valider"}
 
@@ -81,7 +82,7 @@ def _name(db: Session, journey_id) -> str:
 
 
 def cockpit(db: Session, est: uuid.UUID, today: dt.date | None = None) -> dict:
-    today = today or dt.date.today()
+    today = today or _today()
     pend = _pending(db, est)
     journeys = _all(db, est)
     rows = []
@@ -145,7 +146,7 @@ STATE_LABEL = {"completed": "Terminé", "late": "En retard", "action": "Action r
 
 
 def journey_list(db: Session, est: uuid.UUID, today: dt.date | None = None) -> dict:
-    today = today or dt.date.today()
+    today = today or _today()
     pend = _pending(db, est)
     items, counts = [], {k: 0 for k in STATE_LABEL}
     for j in _all(db, est):
@@ -175,7 +176,7 @@ ACTIVITY = {
 
 
 def journey_detail(db: Session, j: m.PatientJourney, today: dt.date | None = None) -> dict:
-    today = today or dt.date.today()
+    today = today or _today()
     pat = db.get(m.Patient, j.patient_id)
     pend = _pending(db, j.establishment_id)
     prop = pend.get(j.id)
@@ -194,8 +195,12 @@ def journey_detail(db: Session, j: m.PatientJourney, today: dt.date | None = Non
         timeline.append({"id": str(t.id), "label": _step_label(delta), "title": t.title, "status": s,
                          "due_date": t.due_date.isoformat(), "owner": t.owner or j.owner or "CarePilot (automatique)",
                          "detail": t.detail, "kind": t.kind})
+    files = {}
+    for dcm in db.scalars(select(m.Document).where(m.Document.journey_id == j.id).order_by(m.Document.created_at)):
+        files[dcm.task_id] = dcm  # le plus récent par pièce
     docs = [{"id": str(t.id), "title": t.title, "status": {"done": "Validé", "submitted": "En revue", "todo": "Manquant"}[t.status],
-             "due_date": t.due_date.isoformat()} for t in tasks if t.required_document]
+             "due_date": t.due_date.isoformat(), "file_id": str(files[t.id].id) if t.id in files else None,
+             "file_name": files[t.id].filename if t.id in files else None} for t in tasks if t.required_document]
     logs = db.scalars(select(m.AuditLog).where(m.AuditLog.establishment_id == j.establishment_id)
                       .order_by(m.AuditLog.at.desc()).limit(300)).all()
     activity = []

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { NavLink, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, Bell, Bot, Building2, CheckSquare, ChevronDown, FileText, GitBranch, LayoutDashboard, Layers, LogOut, MessageSquare, Route as RouteIcon, Search, Settings, ShieldCheck, Users, type LucideIcon } from "lucide-react";
-import { displayName, logout, roles } from "@/auth";
+import { BarChart3, Bell, Bot, Building2, CheckSquare, ChevronDown, FileText, GitBranch, LayoutDashboard, Layers, LogOut, MessageSquare, Route as RouteIcon, Search, Settings as SettingsIcon, ShieldCheck, Users, type LucideIcon } from "lucide-react";
+import { displayName, logout, patientSession, roles } from "@/auth";
 import { api } from "@/lib/api";
 import { roleLabel } from "@/lib/format";
 import type { Cockpit, Me } from "@/lib/types";
@@ -16,6 +16,11 @@ import Designer from "@/pages/Designer";
 import Analytics from "@/pages/Analytics";
 import Agents from "@/pages/Agents";
 import Portal from "@/pages/Portal";
+import PatientEntry from "@/pages/PatientEntry";
+import Tasks from "@/pages/Tasks";
+import Communications from "@/pages/Communications";
+import Reports from "@/pages/Reports";
+import Settings from "@/pages/Settings";
 import ComingSoon from "@/pages/ComingSoon";
 
 type Item = { to: string; label: string; icon: React.ReactNode; badge?: number | string; tone?: "red" | "mint" };
@@ -38,7 +43,7 @@ function Sidebar({ canDesign, tasks, journeys, validation }: { canDesign: boolea
     { title: "Administration", items: [
       { to: "/equipe", label: "Équipe", icon: ic(Users) },
       { to: "/modeles", label: "Modèles de parcours", icon: ic(Layers) },
-      { to: "/parametres", label: "Paramètres", icon: ic(Settings) }] },
+      { to: "/parametres", label: "Paramètres", icon: ic(SettingsIcon) }] },
   ];
   return (
     <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col overflow-y-auto border-r border-line bg-white px-3 py-4 lg:flex">
@@ -90,9 +95,22 @@ function Topbar({ me, pending }: { me?: Me; pending?: number }) {
 }
 
 export default function App() {
+  if (roles().includes("patient") || window.location.pathname.startsWith("/p/")) {
+    return (
+      <Routes>
+        <Route path="/p/:token" element={patientSession() ? <Navigate to="/portal" replace /> : <PatientEntry />} />
+        <Route path="/portal" element={<Portal />} />
+        <Route path="*" element={<Navigate to="/portal" replace />} />
+      </Routes>
+    );
+  }
+  return <StaffApp />;
+}
+
+function StaffApp() {
   const r = roles();
-  if (r.includes("patient")) return <Routes><Route path="/portal" element={<Portal />} /><Route path="*" element={<Navigate to="/portal" />} /></Routes>;
   const canDesign = r.includes("admin") || r.includes("designer");
+  const isAdmin = r.includes("admin");
   const me = useQuery({ queryKey: ["me"], queryFn: () => api<Me>("/me") });
   const cockpit = useQuery({ queryKey: ["cockpit"], queryFn: () => api<Cockpit>("/cockpit") });
   const k = cockpit.data?.kpis;
@@ -110,7 +128,11 @@ export default function App() {
             {canDesign && <Route path="/concepteur" element={<Designer />} />}
             <Route path="/agents" element={<Agents />} />
             <Route path="/analyses" element={<Analytics />} />
-            {[["taches", "Tâches"], ["communications", "Communications"], ["rapports", "Rapports"], ["equipe", "Équipe"], ["modeles", "Modèles de parcours"], ["parametres", "Paramètres"]].map(([p, t]) =>
+            <Route path="/taches" element={<Tasks />} />
+            <Route path="/communications" element={<Communications />} />
+            <Route path="/rapports" element={<Reports />} />
+            {isAdmin && <Route path="/parametres" element={<Settings />} />}
+            {[["equipe", "Équipe"], ["modeles", "Modèles de parcours"], ...(isAdmin ? [] : [["parametres", "Paramètres"]])].map(([p, t]) =>
               <Route key={p} path={`/${p}`} element={<ComingSoon title={t} />} />)}
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>

@@ -21,8 +21,9 @@ def kb(client, h, title="Procédure admission", text=PROC, approve=True):
 
 # ------------------------------------------------------------ guardrails
 def test_redaction():
-    t, found = redact("Mail jean@ex.fr tel 06 12 34 56 78 NIR 1 85 05 78 006 084 36")
-    assert set(found) == {"EMAIL", "PHONE", "NIR"} and not contains_direct_identifier(t)
+    t, found = redact("Mail amal@ex.ma tel 06 12 34 56 78 ou +212 6 61 23 45 67, CIN AB123456, CNSS 123456789")
+    assert set(found) == {"EMAIL", "PHONE", "CIN", "SOCIAL_ID"} and not contains_direct_identifier(t)
+    assert not contains_direct_identifier("Dossier PAR-2026-04817 pseudonyme PT-a1b2-c3d4 le 2026-10-22")
 
 
 def test_chunking_respects_size():
@@ -84,7 +85,7 @@ def test_verify_agent_computes_missing_docs_and_creates_pending_proposal(client,
     h, jid, _ = setup_journey(client, auth, est)
     mock_ai.set_response(VerificationOutput, VerificationOutput(anomalies=["échéance proche"], summary="s"))
     r = client.post(f"/api/ai/verify/{jid}", headers=h).json()
-    assert set(r["payload"]["missing_documents"]) == {"piece_identite", "carte_vitale", "mutuelle", "consentement_admin", "questionnaire_admission"}
+    assert set(r["payload"]["missing_documents"]) == {"cin", "attestation_amo", "mutuelle", "consentement_admin", "questionnaire_admission"}
     assert r["status"] == "pending"
     pid = r["proposal_id"]
     assert client.post(f"/api/ai/proposals/{pid}/approve", headers=h).json()["status"] == "approved"

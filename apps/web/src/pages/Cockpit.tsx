@@ -9,6 +9,8 @@ import { useProposal } from "@/lib/useProposal";
 import { longDate, shortDate, jLabel, dayMonth } from "@/lib/format";
 import { AiTag, Avatar, Button, Card, Confirm, ErrorState, Pill, PriorityTag, Progress, Skeleton, useToast } from "@/components/ui";
 import JourneysTable from "@/components/JourneysTable";
+import NewJourney from "@/components/NewJourney";
+import { download } from "@/lib/api";
 
 function Kpi({ label, value, children, warn }: { label: string; value: number; children?: React.ReactNode; warn?: boolean }) {
   return (
@@ -25,6 +27,7 @@ export default function CockpitPage() {
   const toast = useToast();
   const { approve } = useProposal();
   const [confirm, setConfirm] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const { data, error, refetch } = useQuery({ queryKey: ["cockpit"], queryFn: () => api<Cockpit>("/cockpit") });
   const list = useQuery({ queryKey: ["journeys"], queryFn: () => api<JourneyList>("/journeys") });
   if (error) return <ErrorState onRetry={refetch} />;
@@ -40,8 +43,8 @@ export default function CockpitPage() {
           <h1 className="text-[28px] font-semibold tracking-tight">Bonjour {first}, {urgentCount} parcours attendent votre action</h1>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => toast({ tone: "warning", title: "Export non disponible dans cette démo" })}><Download size={16} />Exporter</Button>
-          <Button onClick={() => toast({ tone: "warning", title: "Création de parcours", text: "Disponible via l'API ; l'écran dédié arrive bientôt." })}><Plus size={16} />Nouveau parcours</Button>
+          <Button variant="secondary" onClick={() => download("/journeys/export.csv", "parcours.csv").catch(() => toast({ tone: "critical", title: "Export impossible" }))}><Download size={16} />Exporter</Button>
+          <Button onClick={() => setCreating(true)}><Plus size={16} />Nouveau parcours</Button>
         </div>
       </div>
 
@@ -120,9 +123,10 @@ export default function CockpitPage() {
         {list.data ? <JourneysTable data={list.data} limit={6} /> : <Skeleton className="h-64" />}
       </section>
 
+      {creating && <NewJourney onClose={() => setCreating(false)} />}
       <Confirm open={!!confirm} title="Approuver et envoyer cette relance ?" confirmLabel="Approuver et envoyer" busy={approve.isPending}
         onCancel={() => setConfirm(null)} onConfirm={() => approve.mutate(confirm!, { onSettled: () => setConfirm(null) })}>
-        Le message préparé par CarePilot sera validé en votre nom. <strong>Démo :</strong> l'envoi par SMS et e-mail est simulé, aucun message réel n'est envoyé.
+        Le message préparé sera validé en votre nom puis envoyé au patient sur son canal préféré. <strong>En démonstration</strong> (messagerie simulée), rien ne part réellement.
       </Confirm>
     </div>
   );

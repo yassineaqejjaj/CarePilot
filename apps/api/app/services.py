@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from ai.providers.base import CallContext, UsageRecord
 from ai.rag.service import Passage
 from app import models as m
-from app.core import Principal, get_settings
+from app.core import Principal, get_settings, today as _today
 
 M = TypeVar("M")
 
@@ -36,11 +36,11 @@ def audit(db: Session, p: Principal, action: str, entity: str, entity_id, **deta
 # ---------------------------------------------------------------- parcours
 AMBULATORY_STEPS = [
     (-21, "Création du parcours", "task", None, False),
-    (-14, "Pièce d'identité", "document", "piece_identite", True),
-    (-14, "Carte Vitale", "document", "carte_vitale", True),
+    (-14, "CIN ou passeport", "document", "cin", True),
+    (-14, "Attestation AMO (CNSS / CNOPS)", "document", "attestation_amo", True),
     (-14, "Questionnaire d'admission", "questionnaire", "questionnaire_admission", True),
     (-14, "Revue des documents administratifs", "task", None, False),
-    (-10, "Attestation de mutuelle", "document", "mutuelle", True),
+    (-10, "Prise en charge mutuelle / assurance", "document", "mutuelle", True),
     (-10, "Rappel", "message", None, False),
     (-7, "Consentement administratif signé", "document", "consentement_admin", True),
     (-7, "Revue des réponses", "task", None, False),
@@ -87,10 +87,13 @@ def instantiate_journey(db: Session, tpl: m.JourneyTemplate, patient: m.Patient,
 def complete_task(task: m.Task, *, automated: bool = False) -> None:
     task.status, task.automated = "done", automated
     task.completed_at = dt.datetime.now(dt.timezone.utc)
+    j = task.journey
+    if j is not None and all(t.status == "done" for t in j.tasks):  # dernier jalon : le parcours est clos
+        j.status, j.completed_at = "completed", task.completed_at
 
 
 def analytics(db: Session, est_id: uuid.UUID, today: dt.date | None = None) -> dict:
-    today = today or dt.date.today()
+    today = today or _today()
     tasks = db.scalars(select(m.Task).where(m.Task.establishment_id == est_id)).all()
     due = [t for t in tasks if t.due_date <= today]
     done_due = [t for t in due if t.status == "done"]
@@ -112,12 +115,24 @@ def month_start() -> dt.datetime:
     return n.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
 
+def ai_status(est: m.Establishment | None) -> tuple[bool, str]:
+    """(activée, raison si bloquée). Les appels OpenAI sortent du Maroc : sans référence d'autorisation CNDP du
+    transfert (loi 09-08 art. 43-44 ; D-941-2025 §11), l'IA reste désactivée."""
+    if not get_settings().ai_enabled:
+        return False, "IA désactivée globalement (AI_ENABLED)"
+    if est is None or not est.ai_enabled:
+        return False, "IA désactivée pour cet établissement"
+    if not est.cndp_transfer_ref.strip():
+        return False, "Transfert à l'étranger non autorisé : renseignez la référence d'autorisation CNDP dans Paramètres"
+    return True, ""
+
+
 def ai_context(db: Session, p: Principal, agent: str) -> CallContext:
     est = db.get(m.Establishment, p.establishment_id)
     used = db.scalar(select(func.coalesce(func.sum(m.AIUsage.input_tokens + m.AIUsage.output_tokens), 0)).where(
         m.AIUsage.establishment_id == p.establishment_id, m.AIUsage.at >= month_start())) or 0
     return CallContext(str(p.establishment_id), agent,
-                       ai_enabled=bool(get_settings().ai_enabled and est and est.ai_enabled),
+                       ai_enabled=ai_status(est)[0],
                        monthly_token_budget=est.monthly_token_budget if est else 0,
                        tokens_used_this_month=int(used))
 
@@ -159,3 +174,36 @@ class SqlVectorStore:
         scored = sorted(((_cos(vector, c.embedding), c, d) for c, d in self.db.execute(base).all()),
                         key=lambda x: -x[0])[:k]
         return [Passage(str(d.id), d.title, d.version, c.content, s) for s, c, d in scored]
+
+
+# ---------------------------------------------------------------- relances (règles, sans IA)
+REMINDER_GAP_HOURS = 48
+MAX_REMINDERS = 3
+
+
+def generate_reminder_proposals(db: Session, est_id: uuid.UUID, now: dt.datetime | None = None) -> int:
+    """Prépare une relance (modèle approuvé) par pièce échue et manquante ; AUCUN envoi : la coordinatrice valide."""
+    from app.templates_msg import render
+    now = now or dt.datetime.now(dt.timezone.utc)
+    est = db.get(m.Establishment, est_id)
+    pending = {p.journey_id for p in db.scalars(select(m.AIProposal).where(
+        m.AIProposal.establishment_id == est_id, m.AIProposal.status == "pending", m.AIProposal.kind == "message_draft")).all()}
+    n = 0
+    for j in db.scalars(select(m.PatientJourney).where(m.PatientJourney.establishment_id == est_id, m.PatientJourney.status == "active")):
+        pat = db.get(m.Patient, j.patient_id)
+        if pat.anonymized_at or j.id in pending:  # une seule relance en attente de validation par parcours
+            continue
+        for t in sorted(j.tasks, key=lambda t: t.due_date):
+            if t.kind != "document" or t.status != "todo" or t.due_date > _today() or t.reminders >= MAX_REMINDERS:
+                continue
+            last = t.last_reminder_at
+            if last is not None and (now - (last if last.tzinfo else last.replace(tzinfo=dt.timezone.utc))) < dt.timedelta(hours=REMINDER_GAP_HOURS):
+                continue
+            msg = render("missing_document", pat.language, first_name=pat.first_name, date=j.surgery_date.strftime("%d/%m/%Y"),
+                         document=t.title.lower() if pat.language == "fr" else t.title, clinic=est.name)
+            db.add(m.AIProposal(establishment_id=est_id, journey_id=j.id, agent="automation", kind="message_draft", payload={
+                **msg, "requires_validation": True, "channel": "auto", "model": "Modèle approuvé · document manquant",
+                "task_id": str(t.id), "language": pat.language}))
+            n += 1
+            break  # une seule relance à la fois par parcours
+    return n

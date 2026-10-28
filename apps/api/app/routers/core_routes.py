@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app import models as m
 from app import services as svc
-from app import views
+from app import intake, views
 from app.core import Principal, current_principal, get_db, require_roles
 
 router = APIRouter()
@@ -23,27 +23,46 @@ class PatientIn(BaseModel):
     first_name: str
     last_name: str
     email: str = ""
+    phone: str = ""
+    birth_date: str = ""  # JJ/MM/AAAA ou AAAA-MM-JJ
+    language: str = "fr"
+    preferred_channel: str = "whatsapp"
+    informed: bool = False  # le patient a reçu l'information prévue par l'art. 5 de la loi 09-08
 
 
 class JourneyIn(BaseModel):
-    patient_id: uuid.UUID
-    template_id: uuid.UUID
+    patient_id: uuid.UUID | None = None
+    patient: PatientIn | None = None
+    template_id: uuid.UUID | None = None
     surgery_date: dt.date
+    procedure: str = ""
+    surgeon: str = ""
+    owner: str = ""
+    admission_time: str = "08:00"
+
+
+def _new_patient(db: Session, p: Principal, body: PatientIn) -> m.Patient:
+    if not body.informed:
+        raise HTTPException(422, "Confirmez que le patient a été informé du traitement de ses données (loi 09-08, art. 5)")
+    try:
+        pat = intake.make_patient(db, p.establishment_id, first_name=body.first_name, last_name=body.last_name, birth_date=body.birth_date,
+                                  phone=body.phone, email=body.email, language=body.language, preferred_channel=body.preferred_channel)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+    svc.audit(db, p, "patient.create", "patient", pat.id, informed=True)
+    return pat
 
 
 @router.post("/patients", status_code=201)
 def create_patient(body: PatientIn, p: Principal = Coord, db: Session = Depends(get_db)):
-    pat = m.Patient(establishment_id=p.establishment_id, ref=f"P-{uuid.uuid4().hex[:8]}", **body.model_dump())
-    db.add(pat)
-    db.flush()
-    svc.audit(db, p, "patient.create", "patient", pat.id)
+    pat = _new_patient(db, p, body)
     db.commit()
     return {"id": str(pat.id), "ref": pat.ref}
 
 
 @router.get("/patients")
 def list_patients(p: Principal = Any_, db: Session = Depends(get_db)):
-    rows = db.scalars(select(m.Patient).where(m.Patient.establishment_id == p.establishment_id)).all()
+    rows = db.scalars(select(m.Patient).where(m.Patient.establishment_id == p.establishment_id, m.Patient.anonymized_at.is_(None))).all()
     return [{"id": str(r.id), "ref": r.ref, "first_name": r.first_name, "last_name": r.last_name} for r in rows]
 
 
@@ -115,13 +134,14 @@ def publish(template_id: uuid.UUID, p: Principal = Depends(require_roles("admin"
 
 @router.post("/journeys", status_code=201)
 def create_journey(body: JourneyIn, p: Principal = Coord, db: Session = Depends(get_db)):
-    tpl = svc.get_scoped(db, m.JourneyTemplate, body.template_id, p)
-    pat = svc.get_scoped(db, m.Patient, body.patient_id, p)
-    j = svc.instantiate_journey(db, tpl, pat, body.surgery_date)
-    db.flush()
-    svc.audit(db, p, "journey.create", "patient_journey", j.id, tasks=len(j.tasks), journey_id=str(j.id))
+    if (body.patient_id is None) == (body.patient is None):
+        raise HTTPException(422, "Indiquez soit patient_id, soit les informations d'un nouveau patient")
+    tpl = svc.get_scoped(db, m.JourneyTemplate, body.template_id, p) if body.template_id else None
+    pat = svc.get_scoped(db, m.Patient, body.patient_id, p) if body.patient_id else _new_patient(db, p, body.patient)
+    j = intake.make_journey(db, p, pat, surgery_date=body.surgery_date, procedure=body.procedure, surgeon=body.surgeon,
+                            owner=body.owner, admission_time=body.admission_time, template=tpl)
     db.commit()
-    return {"id": str(j.id), "tasks": len(j.tasks)}
+    return {"id": str(j.id), "tasks": len(j.tasks), "reference": j.reference}
 
 
 @router.get("/journeys/{journey_id}/tasks")
@@ -149,7 +169,9 @@ def get_cockpit(p: Principal = Any_, db: Session = Depends(get_db)):
 @router.get("/me")
 def me(p: Principal = Depends(current_principal), db: Session = Depends(get_db)):
     est = db.get(m.Establishment, p.establishment_id)
-    return {"establishment": est.name if est else "", "roles": sorted(p.roles), "ai_enabled": bool(est and est.ai_enabled)}
+    enabled, reason = svc.ai_status(est)
+    return {"establishment": est.name if est else "", "roles": sorted(p.roles), "ai_enabled": enabled, "ai_blocked_reason": reason,
+            "cndp_ref": est.cndp_ref if est else ""}
 
 
 @router.get("/journeys")

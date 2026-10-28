@@ -46,7 +46,7 @@ def client(db_factory, mock_ai):
 def make_est(db_factory):
     def _make(name="Clinique A", ai_enabled=True, budget=1_000_000) -> uuid.UUID:
         with db_factory() as s:
-            e = m.Establishment(name=name, ai_enabled=ai_enabled, monthly_token_budget=budget)
+            e = m.Establishment(name=name, ai_enabled=ai_enabled, monthly_token_budget=budget, cndp_transfer_ref="TEST-TRANSFER")
             s.add(e)
             s.commit()
             return e.id

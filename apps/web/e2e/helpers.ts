@@ -9,5 +9,5 @@ export async function login(page: Page, who: { user: string; password: string })
   await page.locator("#username").fill(who.user);
   await page.locator("#password").fill(who.password);
   await page.locator("#kc-login").click();
-  await expect(page.getByRole("button", { name: "Déconnexion" })).toBeVisible();
+  await expect(page.locator('button[aria-label="Déconnexion"], button[aria-label="Quitter"]').first()).toBeVisible();
 }

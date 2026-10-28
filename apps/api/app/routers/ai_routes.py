@@ -9,13 +9,14 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app import messaging
 from ai.agents.agents import (AdministrativeAgent, CommunicationAgent, FollowUpAgent, SummaryAgent)
 from ai.providers.base import AIDisabledError, AIError, AIProvider, BudgetExceededError, GuardrailError
 from ai.providers.openai_provider import OpenAIProvider
 from ai.rag.service import RagService
 from app import models as m
 from app import services as svc
-from app.core import Principal, get_db, require_roles
+from app.core import Principal, get_db, require_roles, today
 
 router = APIRouter(prefix="/ai")
 Coord = Depends(require_roles("admin", "coordinator"))
@@ -84,7 +85,7 @@ def verify(journey_id: uuid.UUID, p: Principal = Coord, db: Session = Depends(ge
     res = _run(lambda: agent.run(
         svc.ai_context(db, p, agent.name), required_docs=[t.required_document for t in docs],
         received_docs=[t.required_document for t in docs if t.status == "done"],
-        days_to_surgery=(j.surgery_date - dt.date.today()).days, journey_ref=pat.ref))
+        days_to_surgery=(j.surgery_date - today()).days, journey_ref=pat.ref))
     return _propose(db, p, j.id, agent.name, "verification", res.model_dump())
 
 
@@ -147,18 +148,48 @@ def _decide(proposal_id, decision, p, db):
     return prop
 
 
+class EditIn(BaseModel):
+    subject: str | None = None
+    body: str | None = None
+
+
+@router.patch("/proposals/{proposal_id}")
+def edit_proposal(proposal_id: uuid.UUID, body: EditIn, p: Principal = Coord, db: Session = Depends(get_db)):
+    """La coordinatrice peut corriger le texte d'un brouillon avant de l'approuver."""
+    prop = svc.get_scoped(db, m.AIProposal, proposal_id, p)
+    if prop.status != "pending" or prop.kind != "message_draft":
+        raise HTTPException(409, "Seul un brouillon de message en attente peut être modifié")
+    payload = dict(prop.payload)
+    if body.subject is not None:
+        payload["subject"] = body.subject[:200]
+    if body.body is not None:
+        if len(body.body) > 2000:
+            raise HTTPException(422, "Message trop long (2000 caractères max)")
+        payload["body"] = body.body
+    payload["edited_by"] = p.name or p.sub
+    prop.payload = payload
+    svc.audit(db, p, "ai.edit", "ai_proposal", prop.id, journey_id=str(prop.journey_id) if prop.journey_id else None)
+    db.commit()
+    return {"id": str(prop.id), "payload": prop.payload}
+
+
 @router.post("/proposals/{proposal_id}/approve")
 def approve(proposal_id: uuid.UUID, p: Principal = Coord, db: Session = Depends(get_db)):
     prop = _decide(proposal_id, "approved", p, db)
-    tid = prop.payload.get("task_id") if prop.kind == "message_draft" else None
-    if tid:  # la relance validée compte comme relance ; AUCUN envoi réel dans le MVP
-        task = db.get(m.Task, uuid.UUID(tid))
-        if task is not None and task.establishment_id == p.establishment_id:
+    delivery = None
+    if prop.kind == "message_draft" and prop.journey_id:
+        j = db.get(m.PatientJourney, prop.journey_id)
+        pat = db.get(m.Patient, j.patient_id)
+        row = messaging.send_to_patient(db, p.establishment_id, pat, j.id, "reminder", prop.payload.get("subject", ""),
+                                        prop.payload.get("body", ""), channel=prop.payload.get("channel"))
+        delivery = {"status": row.status, "channel": row.channel, "to": row.to_masked, "error": row.error}
+        tid = prop.payload.get("task_id")
+        task = db.get(m.Task, uuid.UUID(tid)) if tid else None
+        if task is not None and task.establishment_id == p.establishment_id and row.status != "failed":
             task.reminders += 1
-    # Seule action appliquée automatiquement après validation humaine : marquer un document requis
-    # comme reçu N'EST PAS fait ici (un humain contrôle la pièce). Les messages ne sont pas envoyés dans le MVP.
+            task.last_reminder_at = dt.datetime.now(dt.timezone.utc)
     db.commit()
-    return {"id": str(prop.id), "status": prop.status}
+    return {"id": str(prop.id), "status": prop.status, "delivery": delivery}
 
 
 @router.post("/proposals/{proposal_id}/reject")
