@@ -57,7 +57,7 @@ function Sidebar({ canDesign, tasks, journeys, validation }: { canDesign: boolea
   return (
     <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col overflow-y-auto border-r border-line bg-white px-3 py-4 lg:flex">
       <div className="mb-5 flex flex-col items-center px-2">
-        <BrandLogo /><p className="mt-1 text-center text-[11px] text-ink-2">Votre parcours de soins.<br />Notre accompagnement.</p>
+        <BrandLogo className="h-auto w-[120px]" /><p className="mt-1 text-center text-[11px] text-ink-2">Votre parcours de soins.<br />Notre accompagnement.</p>
       </div>
       {groups.map((g) => (
         <nav key={g.title} aria-label={g.title} className="mb-4">
