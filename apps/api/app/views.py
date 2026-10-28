@@ -108,7 +108,7 @@ def cockpit(db: Session, est: uuid.UUID, today: dt.date | None = None) -> dict:
             "patient_ref": pat.ref, "reference": j.reference, "procedure": j.procedure,
             "surgery_date": j.surgery_date.isoformat(), "progress": progress(j)["pct"], "next_doc": _next_doc(j),
             "owner": j.owner, "state": st,
-            "note": ("Relance préparée par CarePilot" if prop and prop.kind == "message_draft" else
+            "note": ("Relance préparée par M3aya Santé" if prop and prop.kind == "message_draft" else
                      "Tous les documents sont reçus" if pr == "ready" else
                      (f"{max(t.reminders for t in j.tasks)} relances sans réponse" if any(t.reminders for t in j.tasks) else None)),
             "proposal_id": str(prop.id) if prop else None,
@@ -170,8 +170,8 @@ ACTIVITY = {
     "task.complete": ("Action équipe", "Tâche validée : {title}"),
     "portal.submit": ("Patient", "Document déposé : {title}"),
     "journey.create": ("Automatique", "Parcours créé depuis la programmation opératoire."),
-    "ai.approved": ("Action équipe", "Proposition CarePilot validée ({kind})."),
-    "ai.rejected": ("Action équipe", "Proposition CarePilot rejetée ({kind})."),
+    "ai.approved": ("Action équipe", "Proposition M3aya Santé validée ({kind})."),
+    "ai.rejected": ("Action équipe", "Proposition M3aya Santé rejetée ({kind})."),
 }
 
 
@@ -193,7 +193,7 @@ def journey_detail(db: Session, j: m.PatientJourney, today: dt.date | None = Non
         else:
             s = "upcoming"
         timeline.append({"id": str(t.id), "label": _step_label(delta), "title": t.title, "status": s,
-                         "due_date": t.due_date.isoformat(), "owner": t.owner or j.owner or "CarePilot (automatique)",
+                         "due_date": t.due_date.isoformat(), "owner": t.owner or j.owner or "M3aya Santé (automatique)",
                          "detail": t.detail, "kind": t.kind})
     files = {}
     for dcm in db.scalars(select(m.Document).where(m.Document.journey_id == j.id).order_by(m.Document.created_at)):
@@ -211,7 +211,9 @@ def journey_detail(db: Session, j: m.PatientJourney, today: dt.date | None = Non
         activity.append({"at": a.at.isoformat(), "tag": tag, "text": text.format(**{"title": "", "kind": "", **a.detail}),
                          "actor": a.detail.get("actor_label", "")})
     prog = progress(j)
-    return {
+    from app.catalogue import metadata
+    tpl = db.get(m.JourneyTemplate, j.template_id)
+    return {"template_name": tpl.name, "catalogue": metadata(tpl.name),
         "journey_id": str(j.id), "state": st, "state_label": STATE_LABEL[st],
         "patient": {"name": f"{pat.first_name} {pat.last_name}", "ref": pat.ref, "birth_date": pat.birth_date.isoformat() if pat.birth_date else None},
         "reference": j.reference, "procedure": j.procedure, "surgeon": j.surgeon, "owner": j.owner,

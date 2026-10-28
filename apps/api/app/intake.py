@@ -54,8 +54,9 @@ def make_patient(db: Session, est_id: uuid.UUID, *, first_name: str, last_name: 
 
 
 def default_template(db: Session, est_id: uuid.UUID) -> m.JourneyTemplate:
-    t = db.scalar(select(m.JourneyTemplate).where(m.JourneyTemplate.establishment_id == est_id, m.JourneyTemplate.status == "published")
-                  .order_by(m.JourneyTemplate.version.desc()))
+    candidates = list(db.scalars(select(m.JourneyTemplate).where(m.JourneyTemplate.establishment_id == est_id, m.JourneyTemplate.status == "published")
+                  .order_by(m.JourneyTemplate.version.desc())))
+    t = next((t for t in candidates if t.name == "Chirurgie ambulatoire J-21 → J+7"), candidates[0] if candidates else None)
     if t is None:
         raise HTTPException(409, "Aucun parcours publié : publiez un modèle dans le concepteur")
     return t
@@ -82,7 +83,8 @@ def import_csv(db: Session, p: Principal, text: str, dry_run: bool = False) -> d
     rows = list(csv.DictReader(io.StringIO(text), dialect=dialect))
     if len(rows) > MAX_CSV_ROWS:
         raise HTTPException(413, f"Maximum {MAX_CSV_ROWS} lignes par import")
-    tpl = default_template(db, p.establishment_id)
+    default = default_template(db, p.establishment_id)
+    from app.catalogue import BY_KEY
     created, errors = 0, []
     for i, raw in enumerate(rows, start=2):  # ligne 1 = en-têtes
         r = {(k or "").strip().lower(): (v or "").strip() for k, v in raw.items()}
@@ -90,6 +92,16 @@ def import_csv(db: Session, p: Principal, text: str, dry_run: bool = False) -> d
             sd = parse_birth_date_any(r.get("surgery_date", ""))
             if sd is None:
                 raise ValueError("Date d'intervention invalide (JJ/MM/AAAA ou AAAA-MM-JJ)")
+            tpl = default
+            pathway = r.get("pathway", "")
+            if pathway:
+                definition = BY_KEY.get(pathway)
+                if not definition:
+                    raise ValueError("Clé de parcours inconnue (colonne pathway)")
+                tpl = db.scalar(select(m.JourneyTemplate).where(m.JourneyTemplate.establishment_id == p.establishment_id,
+                        m.JourneyTemplate.name == definition["name"], m.JourneyTemplate.status == "published").order_by(m.JourneyTemplate.version.desc()))
+                if tpl is None:
+                    raise ValueError("Ce parcours n'est pas publié pour cet établissement")
             with db.begin_nested():  # un enregistrement invalide n'annule pas les autres
                 pat = make_patient(db, p.establishment_id, first_name=r.get("first_name", ""), last_name=r.get("last_name", ""),
                                    birth_date=r.get("birth_date", ""), phone=r.get("phone", ""), email=r.get("email", ""),

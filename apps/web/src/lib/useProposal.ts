@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui";
 
-/** Validation humaine d'une proposition CarePilot. Aucun SMS/e-mail réel n'est envoyé dans cette démo. */
+/** Validation humaine d'une proposition M3aya Santé. Aucun SMS/e-mail réel n'est envoyé dans cette démo. */
 export function useProposal() {
   const qc = useQueryClient();
   const toast = useToast();

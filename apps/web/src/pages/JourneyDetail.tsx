@@ -35,9 +35,9 @@ export default function JourneyDetailPage() {
   if (!d) return <div className="space-y-4"><Skeleton className="h-10 w-1/2" /><Skeleton className="h-32" /><Skeleton className="h-96" /></div>;
   const na = d.next_action;
   const facts: [string, string, string][] = [
-    ["Intervention", d.procedure, "Chirurgie ambulatoire"],
+    ["Acte / rendez-vous", d.procedure, d.catalogue?.category ?? "Parcours administratif"],
     ["Date", longDate(d.surgery_date).replace(/^(\w+)/, (w) => w.slice(0, 3) + "."), `Admission ${d.admission_time} · ${d.days_to_surgery >= 0 ? "J-" + d.days_to_surgery : "J+" + -d.days_to_surgery}`],
-    ["Coordinateur", d.owner, `Chirurgien : ${d.surgeon}`],
+    ["Coordinateur", d.owner, `Praticien : ${d.surgeon || "À préciser"}`],
   ];
   return (
     <div className="space-y-6">
@@ -69,7 +69,7 @@ export default function JourneyDetailPage() {
       {na && (
         <section className="rounded-panel border border-dashed border-teal-500/60 bg-mint-100/60 p-5" aria-label="Prochaine action administrative">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-teal-800">Prochaine action administrative</p>
-          <div className="mt-1"><AiTag>Suggestion CarePilot · validation humaine requise</AiTag></div>
+          <div className="mt-1"><AiTag>Suggestion M3aya Santé · validation humaine requise</AiTag></div>
           {na.kind === "message_draft" ? (
             <>
               <h2 className="mt-3 text-[22px] font-semibold">Relancer {d.patient.name.split(" ")[0]} pour son {na.payload.subject?.replace(/^Votre /, "").toLowerCase()}</h2>
@@ -96,7 +96,7 @@ export default function JourneyDetailPage() {
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <Card className="p-5">
           <h2 className="text-lg font-semibold">Chronologie du parcours</h2>
-          <p className="text-ink-2">Modèle : Préparation chirurgie ambulatoire · v{d.template_version}</p>
+          <p className="text-ink-2">Modèle : {d.template_name} · v{d.template_version}</p>
           <ol className="mt-4">
             {d.timeline.map((t, i) => (
               <li key={t.id} className="relative flex gap-3 pb-5 last:pb-0">

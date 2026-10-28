@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,7 +27,8 @@ export default function Designer() {
   const qc = useQueryClient();
   const { data: templates } = useQuery({ queryKey: ["templates"], queryFn: () => api<Template[]>("/templates") });
   const [simulating, setSimulating] = useState(false);
-  const [tplId, setTplId] = useState<string>();
+  const [search] = useSearchParams();
+  const [tplId, setTplId] = useState<string>(search.get("template") ?? "");
   const [steps, setSteps] = useState<Step[]>([]);
   const [sel, setSel] = useState<number | null>(null);
   const tpl = templates?.find((t) => t.id === tplId);

@@ -22,6 +22,7 @@ import Settings from "@/pages/Settings";
 import { LiveUpdates, LiveBadge } from "@/lib/live";
 import ComingSoon from "@/pages/ComingSoon";
 
+const Catalogue = lazy(() => import("@/pages/Catalogue"));
 const Designer = lazy(() => import("@/pages/Designer"));
 const Analytics = lazy(() => import("@/pages/Analytics"));
 const Copilot = lazy(() => import("@/pages/Copilot"));
@@ -50,13 +51,13 @@ function Sidebar({ canDesign, tasks, journeys, validation }: { canDesign: boolea
       { to: "/rapports", label: "Rapports", icon: ic(FileText) }] },
     { title: "Administration", items: [
       { to: "/equipe", label: "Équipe", icon: ic(Users) },
-      { to: "/modeles", label: "Modèles de parcours", icon: ic(Layers) },
+      { to: "/modeles", label: "Catalogue de parcours", icon: ic(Layers) },
       { to: "/parametres", label: "Paramètres", icon: ic(SettingsIcon) }] },
   ];
   return (
     <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col overflow-y-auto border-r border-line bg-white px-3 py-4 lg:flex">
       <div className="mb-5 flex items-center gap-2.5 px-2">
-        <Logo /><span className="text-lg font-semibold text-navy-900">Care<span className="text-teal-700">Pilot</span></span>
+        <Logo /><div className="leading-tight"><span className="text-lg font-semibold text-navy-900">M3aya <span className="text-teal-700">Santé</span></span><p className="mt-0.5 text-meta text-ink-2" lang="ar">معايا · à chaque étape</p></div>
       </div>
       {groups.map((g) => (
         <nav key={g.title} aria-label={g.title} className="mb-4">
@@ -140,12 +141,13 @@ function StaffApp() {
             <Route path="/copilote" element={<Copilot />} />
             <Route path="/demo" element={<GuidedDemo />} />
             <Route path="/procedures" element={<Procedures />} />
+            <Route path="/modeles" element={<Catalogue />} />
             <Route path="/analyses" element={<Analytics />} />
             <Route path="/taches" element={<Tasks />} />
             <Route path="/communications" element={<Communications />} />
             <Route path="/rapports" element={<Reports />} />
             {isAdmin && <Route path="/parametres" element={<Settings />} />}
-            {[["equipe", "Équipe"], ["modeles", "Modèles de parcours"], ...(isAdmin ? [] : [["parametres", "Paramètres"]])].map(([p, t]) =>
+            {[["equipe", "Équipe"], ...(isAdmin ? [] : [["parametres", "Paramètres"]])].map(([p, t]) =>
               <Route key={p} path={`/${p}`} element={<ComingSoon title={t} />} />)}
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>

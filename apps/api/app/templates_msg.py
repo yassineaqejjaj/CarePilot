@@ -5,7 +5,7 @@ from __future__ import annotations
 TEMPLATES = {
     "missing_document": {
         "fr": {"subject": "Document à nous transmettre",
-               "body": ("Bonjour {first_name},\n\nPour finaliser votre dossier d'admission du {date}, il nous manque : {document}. "
+               "body": ("Bonjour {first_name},\n\nPour finaliser votre dossier administratif du {date}, il nous manque : {document}. "
                         "Vous pouvez le déposer en photo depuis votre espace patient.\n\nMerci,\nLe service des admissions — {clinic}")},
         "ar": {"subject": "وثيقة مطلوبة",
                "body": ("مرحباً {first_name}،\n\nلإكمال ملف قبولكم بتاريخ {date}، ينقصنا: {document}. "
@@ -13,7 +13,7 @@ TEMPLATES = {
     },
     "invitation": {
         "fr": {"subject": "Votre espace patient",
-               "body": ("Bonjour {first_name},\n\n{clinic} vous invite à suivre vos démarches administratives avant votre intervention du {date}. "
+               "body": ("Bonjour {first_name},\n\n{clinic} vous invite à suivre vos démarches administratives pour votre rendez-vous ou admission du {date}. "
                         "Ouvrez ce lien personnel (valable {hours} h) : {link}\nVous devrez confirmer votre date de naissance.\n\n"
                         "Ne partagez pas ce lien.")},
         "ar": {"subject": "فضاء المريض الخاص بكم",

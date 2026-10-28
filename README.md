@@ -1,17 +1,43 @@
-# CarePilot Morocco
+# M3aya Santé — معايا
 
 **Administrative patient-journey coordination for Moroccan private clinics.**  
 *Every patient. Every step. Connected.*
 
 [Product walkthrough](https://github.com/user-attachments/assets/f6f8542e-7ebe-4b5e-8892-dd34fc8fe758)
 
-CarePilot gives an admissions team one place to prepare ambulatory surgery from **D−21 to D+7**: collect paperwork, see overdue tasks, prepare reminders, and keep an audit trail of human approvals.
+M3aya Santé (formerly CarePilot) gives clinic teams one place to coordinate nine administrative pathways, from specialist consultation to maternity and hospitalization: collect paperwork, see overdue tasks, prepare reminders, and keep an audit trail of human approvals.
 
-**[Open the live demo](https://carepilot-maroc.vercel.app)** · [Architecture](docs/architecture.md) · [Moroccan regulatory review](docs/compliance-morocco.md) · [Security](docs/security.md)
+**[Open M3aya Santé](https://carepilot-maroc.vercel.app)** · [Architecture](docs/architecture.md) · [Moroccan regulatory review](docs/compliance-morocco.md) · [Security](docs/security.md)
 
 > **Synthetic data only.** The public deployment is a demonstration. SMS, WhatsApp and email delivery are simulated; OpenAI is not configured. Do not enter real patient data. The application is not certified by the CNDP and does not make medical decisions. Online passwords are generated separately and are never committed here.
 
 ![Operations dashboard](docs/screenshots/01-cockpit.png)
+
+## Nine clinic reference pathways
+
+![M3aya Santé pathway catalogue](docs/screenshots/17-catalogue-m3aya.png)
+
+**M3aya Santé — معايا** is the new working product name. *M3aya* means “with me” in Moroccan Darija: coordination that stays alongside each patient. The technical repository, identity realm and existing deployment URLs retain `carepilot` to preserve access. This is a working identity, not a trademark-clearance claim.
+
+Open **Catalogue de parcours** in the sidebar to filter by clinical activity, explore administrative milestones and required reference documents, simulate the template, customize it in the designer, or open a dedicated fictional example. New dossier creation now explicitly selects a published pathway. CSV imports may specify a catalogue key in the `pathway` column.
+
+| Catalogue key | Reference pathway | Reference window | Coordination focus |
+|---|---|---|---|
+| `consultation` | Specialist consultation | D−7 → D+2 | Appointment, identity, coverage, reception and administrative follow-up |
+| `imagerie` | Medical imaging | D−7 → D+2 | Provided prescription, identity, coverage and appointment reception |
+| `endoscopie` | Outpatient endoscopy | D−14 → D+3 | Administrative admission, coverage and service contacts |
+| `ambulatoire` | Ambulatory surgery | D−21 → D+7 | Existing reference pathway, documents and human-approved reminders |
+| `hospitalisation` | Planned hospitalization | D−21 → D+14 | Preadmission, coverage, administrative accommodation preferences and discharge paperwork |
+| `maternite` | Maternity admission and stay | D−30 → D+21 | Maternal administrative record, coverage, family contacts and paperwork |
+| `hopital_jour` | Scheduled day-hospital visit | D−14 → D+7 | One medically scheduled visit and its coverage; no treatment scheduling |
+| `reeducation` | Rehabilitation intake | D−7 → D+14 | Provided prescription, appointment availability and reimbursement documents |
+| `admission_non_programmee` | Unplanned admission | D0 → D+7 | Deferred paperwork; administrative collection does not gate urgent care |
+
+![Maternity reference pathway](docs/screenshots/18-maternity-pathway.png)
+
+Dates and documents are **configurable administrative references**, not universal requirements or medical protocols. Predicted admissions and discharge-related dates must be adapted to actual events. No medication, fasting, examination preparation, diagnosis or clinical eligibility is generated. For day-hospital and rehabilitation pathways, care schedules are provided by the clinical team; automatic recurring clinical scheduling is not implemented.
+
+Demo startup installs missing reference templates additively; existing template versions and patient journeys stay unchanged. Outside demo mode, installing a reference creates a draft for a clinic designer to review and publish. Fictional examples are only available in demo mode and are reused rather than duplicated on repeated clicks.
 
 ## For clinic teams
 
@@ -84,7 +110,7 @@ Administrators configure the clinic's CNDP references, rights contact and retent
 | Viewer | Read-only staff views |
 | Patient | Their own portal only |
 
-The patient portal is bilingual; the staff interface is currently French. **Team management** and **template catalogue** remain placeholder pages. User administration uses Keycloak.
+The patient portal is bilingual; the staff interface is currently French. **Team management** remains a placeholder page; the pathway catalogue is functional. User administration uses Keycloak.
 
 ## Interactive product experience (v0.3)
 
@@ -260,7 +286,9 @@ export DATABASE_URL=postgresql+psycopg://carepilot:carepilot@localhost:5442/care
 (cd apps/web && npm run e2e)
 ```
 
-Validation: **48 pytest tests passed** locally, including real pgvector retrieval; **10 original Playwright scenarios passed locally and against the live Vercel/Railway deployment** on 28 October 2026. They cover tenant isolation, patient consent, link lockout, encrypted files, invalid uploads, rights/erasure, retention, CSV simulation/import and human approval. The browser tests mutate synthetic data. `scripts/test-deployed.mjs` runs against the online demo using the owner's ignored credentials file; do not run it against a clinic environment.
+The **3 new catalogue Playwright scenarios also passed against production**, covering the nine templates, a reusable maternity example, and explicit imaging template selection.
+
+Validation: **54 pytest tests passed** locally, including real pgvector retrieval; **10 original Playwright scenarios passed locally and against the live Vercel/Railway deployment** on 28 October 2026. They cover tenant isolation, patient consent, link lockout, encrypted files, invalid uploads, rights/erasure, retention, CSV simulation/import and human approval. The browser tests mutate synthetic data. `scripts/test-deployed.mjs` runs against the online demo using the owner's ignored credentials file; do not run it against a clinic environment.
 
 ### Deployment
 
@@ -278,7 +306,7 @@ The Keycloak realm generation helper creates deployment-specific passwords outsi
 
 Morocco has data-protection obligations under **Law 09-08**. The CNDP publishes a patient-follow-up authorization procedure and requires supporting notice/consent or another legal basis, and processor documentation. See the [CNDP's official procedure](https://www.cndp.ma/procedures-de-notification-process/) and [notification requirements](https://www.cndp.ma/notifier-un-traitement/).
 
-CarePilot includes technical mechanisms to support those obligations, but a clinic still needs to establish its lawful basis, complete applicable CNDP formalities, review foreign hosting and provider transfers, and contract with processors. Retention periods must be chosen for the clinic's actual obligations. Railway reports the current API, identity and database region as **SFO (United States)**. This deployment is for synthetic demonstrations only; it is not a Morocco-resident hosting arrangement. Foreign processing must be reviewed before real patient use.
+M3aya Santé includes technical mechanisms to support those obligations, but a clinic still needs to establish its lawful basis, complete applicable CNDP formalities, review foreign hosting and provider transfers, and contract with processors. Retention periods must be chosen for the clinic's actual obligations. Railway reports the current API, identity and database region as **SFO (United States)**. This deployment is for synthetic demonstrations only; it is not a Morocco-resident hosting arrangement. Foreign processing must be reviewed before real patient use.
 
 The Moroccan focus does not establish a blanket exemption from GDPR or the EU AI Act where their territorial scope otherwise applies. Legal applicability should be checked for the actual clinic, patients and service arrangement. See the [detailed Moroccan review](docs/compliance-morocco.md), including unresolved questions. No legal compliance, HDS equivalence or qualified electronic-signature claim is made.
 
@@ -287,7 +315,7 @@ The Moroccan focus does not establish a blanket exemption from GDPR or the EU AI
 - Obtain applicable CNDP approvals and validate transfers, hosting, processor contracts and Arabic legal copy.
 - Add malware scanning, backup/restore exercises, secret rotation, a security assessment and robust patient authentication.
 - Move Keycloak to persistent PostgreSQL; run scheduled jobs and monitoring; implement proper incremental migrations.
-- Complete team management and template catalogue, hospital-system integration, insurer connections and qualified signatures if required.
+- Complete team management, hospital-system integration, insurer connections and qualified signatures if required.
 - Activate and verify messaging with approved senders/templates; evaluate AI on synthetic cases before enabling it.
 - Improve concurrent delivery/idempotency and retention coverage across derived records and backups.
 

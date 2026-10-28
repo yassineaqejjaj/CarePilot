@@ -1,22 +1,31 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { ApiError, api } from "@/lib/api";
 import { Button, useToast } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 type ImportResult = { created: number; errors: { line: number; error: string }[]; dry_run: boolean };
-const EMPTY = { first_name: "", last_name: "", birth_date: "", phone: "", email: "", language: "fr", preferred_channel: "whatsapp", procedure: "", surgeon: "", owner: "", surgery_date: "", admission_time: "08:00", informed: false };
+const EMPTY = { first_name: "", last_name: "", birth_date: "", phone: "", email: "", language: "fr", preferred_channel: "whatsapp", procedure: "", surgeon: "", owner: "", surgery_date: "", admission_time: "08:00", template_id: "", informed: false };
 const CSV_HELP = "first_name;last_name;birth_date;phone;surgery_date;procedure;surgeon;owner;language\nOmar;Tazi;02/05/1970;06 61 23 45 67;12/11/2026;Hernie inguinale;Dr A. Mansouri;Salma El Idrissi;fr";
 
 const field = "mt-1 h-10 w-full rounded-ctl border border-line-strong bg-white px-3";
 
-export default function NewJourney({ onClose }: { onClose: () => void }) {
+export default function NewJourney({ onClose, initialTemplateId }: { onClose: () => void; initialTemplateId?: string }) {
   const qc = useQueryClient();
   const nav = useNavigate();
   const toast = useToast();
   const [tab, setTab] = useState<"manual" | "csv">("manual");
-  const [f, setF] = useState(EMPTY);
+  const [f, setF] = useState({...EMPTY, template_id: initialTemplateId ?? ""});
+  const templates = useQuery({queryKey:["templates"],queryFn:()=>api<{id:string;name:string;status:string;catalogue?:{anchor_label:string;anchor:string}|null}[]>("/templates")});
+  const published = templates.data?.filter(t=>t.status === "published") ?? [];
+  const chosen = published.find(t=>t.id===f.template_id);
+  useEffect(()=>{
+    if (!f.template_id && published.length) {
+      const selected = published.find(t=>t.id===initialTemplateId) ?? published.find(t=>t.name.startsWith("Chirurgie ambulatoire")) ?? published[0];
+      setF(prev=>({...prev,template_id:selected.id}));
+    }
+  },[templates.data, initialTemplateId, f.template_id]);
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [err, setErr] = useState("");
@@ -26,7 +35,7 @@ export default function NewJourney({ onClose }: { onClose: () => void }) {
   const create = useMutation({
     mutationFn: () => api<{ id: string; reference: string }>("/journeys", { method: "POST", body: JSON.stringify({
       patient: { first_name: f.first_name, last_name: f.last_name, birth_date: f.birth_date, phone: f.phone, email: f.email, language: f.language, preferred_channel: f.preferred_channel, informed: f.informed },
-      surgery_date: toIso(f.surgery_date), procedure: f.procedure, surgeon: f.surgeon, owner: f.owner, admission_time: f.admission_time }) }),
+      template_id: f.template_id || undefined, surgery_date: toIso(f.surgery_date), procedure: f.procedure, surgeon: f.surgeon, owner: f.owner, admission_time: f.admission_time }) }),
     onSuccess: (r) => { refresh(); toast({ tone: "success", title: "Parcours créé", text: r.reference }); onClose(); nav(`/parcours/${r.id}`); },
     onError: (e) => setErr(e instanceof ApiError ? e.detail : "Création impossible"),
   });
@@ -48,6 +57,9 @@ export default function NewJourney({ onClose }: { onClose: () => void }) {
 
         {tab === "manual" ? (
           <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={(e) => { e.preventDefault(); setErr(""); create.mutate(); }}>
+            <label className="md:col-span-2">Modèle de parcours<select required className={field} value={f.template_id} onChange={set("template_id")}><option value="">Choisir un modèle publié</option>{published.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label>
+            {templates.isError && <p className="text-critical-text md:col-span-2">Impossible de charger les modèles.</p>}
+            {templates.isSuccess && !published.length && <p className="text-warning-text md:col-span-2">Publiez un modèle dans le catalogue ou le concepteur avant de créer un dossier.</p>}
             <label>Prénom<input required className={field} value={f.first_name} onChange={set("first_name")} /></label>
             <label>Nom<input required className={field} value={f.last_name} onChange={set("last_name")} /></label>
             <label>Date de naissance<input required className={field} placeholder="JJ/MM/AAAA" value={f.birth_date} onChange={set("birth_date")} /></label>
@@ -57,21 +69,21 @@ export default function NewJourney({ onClose }: { onClose: () => void }) {
               <label>Langue<select className={field} value={f.language} onChange={set("language")}><option value="fr">Français</option><option value="ar">العربية</option></select></label>
               <label>Canal<select className={field} value={f.preferred_channel} onChange={set("preferred_channel")}><option value="whatsapp">WhatsApp</option><option value="sms">SMS</option><option value="email">E-mail</option></select></label>
             </div>
-            <label>Intervention<input required className={field} value={f.procedure} onChange={set("procedure")} /></label>
-            <label>Chirurgien<input className={field} value={f.surgeon} onChange={set("surgeon")} /></label>
-            <label>Date d'intervention<input required className={field} placeholder="JJ/MM/AAAA" value={f.surgery_date} onChange={set("surgery_date")} /></label>
+            <label>Acte / motif du rendez-vous<input required className={field} value={f.procedure} onChange={set("procedure")} /></label>
+            <label>Praticien / service<input className={field} value={f.surgeon} onChange={set("surgeon")} /></label>
+            <label>{chosen?.catalogue?.anchor_label ?? "Date d’intervention"}<input required className={field} placeholder="JJ/MM/AAAA" value={f.surgery_date} onChange={set("surgery_date")} /></label>
             <div className="grid grid-cols-2 gap-3">
-              <label>Heure d'admission<input type="time" className={field} value={f.admission_time} onChange={set("admission_time")} /></label>
+              <label>Heure d’accueil<input type="time" className={field} value={f.admission_time} onChange={set("admission_time")} /></label>
               <label>Responsable<input className={field} placeholder="Moi" value={f.owner} onChange={set("owner")} /></label>
             </div>
             <label className="flex items-start gap-2 md:col-span-2"><input type="checkbox" className="mt-1" checked={f.informed} onChange={(e) => setF({ ...f, informed: e.target.checked })} />
               <span>Le patient a été informé du traitement de ses données (finalité, destinataires, droits d'accès, de rectification et d'opposition — loi 09-08, art. 5).</span></label>
             {err && <p role="alert" className="rounded-ctl bg-critical-bg p-3 text-critical-text md:col-span-2">{err}</p>}
-            <div className="flex justify-end gap-2 md:col-span-2"><Button type="button" variant="secondary" onClick={onClose}>Annuler</Button><Button disabled={!f.informed || create.isPending}>{create.isPending ? "Création…" : "Créer le parcours"}</Button></div>
+            <div className="flex justify-end gap-2 md:col-span-2"><Button type="button" variant="secondary" onClick={onClose}>Annuler</Button><Button disabled={!f.informed || !f.template_id || create.isPending}>{create.isPending ? "Création…" : "Créer le parcours"}</Button></div>
           </form>
         ) : (
           <div className="mt-4 space-y-3">
-            <p className="text-ink-2">Colonnes : <code>first_name, last_name, surgery_date</code> (obligatoires), puis <code>birth_date, phone, email, procedure, surgeon, owner, language, channel</code>. Séparateur « ; » ou « , », dates JJ/MM/AAAA. 500 lignes maximum.</p>
+            <p className="text-ink-2">Colonnes : <code>first_name, last_name, surgery_date</code> (obligatoires), puis <code>birth_date, phone, email, procedure, surgeon, owner, language, channel, pathway</code>. Séparateur « ; » ou « , », dates JJ/MM/AAAA. 500 lignes maximum. La colonne pathway accepte la clé du catalogue (ex. imagerie, maternite) ; sans elle, le modèle ambulatoire publié reste le défaut.</p>
             <pre className="overflow-x-auto rounded-ctl bg-surface-2 p-3 text-meta">{CSV_HELP}</pre>
             <input type="file" accept=".csv,text/csv" aria-label="Fichier CSV" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setResult(null); setErr(""); }} />
             {err && <p role="alert" className="rounded-ctl bg-critical-bg p-3 text-critical-text">{err}</p>}

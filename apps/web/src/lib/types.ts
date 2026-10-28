@@ -13,7 +13,7 @@ export type JourneyList = {
   items: { journey_id: string; patient_name: string; reference: string; procedure: string; surgery_date: string; days_to_surgery: number; stage: string; progress: number; state: State; state_label: string; owner: string }[];
 };
 export type JourneyDetail = {
-  journey_id: string; state: State; state_label: string; reference: string; procedure: string; surgeon: string; owner: string; surgery_date: string; admission_time: string; days_to_surgery: number; template_version: number;
+  journey_id: string; state: State; state_label: string; reference: string; procedure: string; surgeon: string; owner: string; surgery_date: string; admission_time: string; days_to_surgery: number; template_version: number; template_name: string; catalogue: {category:string;anchor:string;anchor_label:string}|null;
   patient: { name: string; ref: string; birth_date: string | null };
   progress: { done: number; total: number; pct: number; missing: number };
   timeline: { id: string; label: string; title: string; status: "done" | "action" | "upcoming"; due_date: string; owner: string; detail: string }[];

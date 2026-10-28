@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app import models as m
 from app import services as svc
-from app import intake, views
+from app import intake, views, catalogue
 from app.core import Principal, current_principal, get_db, require_roles
 
 router = APIRouter()
@@ -69,7 +69,7 @@ def list_patients(p: Principal = Any_, db: Session = Depends(get_db)):
 @router.get("/templates")
 def list_templates(p: Principal = Any_, db: Session = Depends(get_db)):
     rows = db.scalars(select(m.JourneyTemplate).where(m.JourneyTemplate.establishment_id == p.establishment_id)).all()
-    return [{"id": str(t.id), "name": t.name, "version": t.version, "status": t.status,
+    return [{"id": str(t.id), "name": t.name, "version": t.version, "status": t.status, "catalogue": catalogue.metadata(t.name),
              "steps": [{"offset_days": s.offset_days, "title": s.title, "kind": s.kind,
                         "required_document": s.required_document, "blocking": s.blocking} for s in t.steps]}
             for t in rows]

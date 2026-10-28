@@ -89,10 +89,10 @@ export default function CockpitPage() {
           </ul>
         </Card>
 
-        <aside className="self-start rounded-panel bg-navy-900 p-5 text-white shadow-menu" aria-label="CarePilot Assistant">
+        <aside className="self-start rounded-panel bg-navy-900 p-5 text-white shadow-menu" aria-label="M3aya Santé Assistant">
           <div className="flex items-center gap-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-ctl bg-white/10 text-signal"><Sparkles size={16} /></span>
-            <div><p className="font-semibold">CarePilot Assistant</p><p className="text-meta text-white/70">{data.assistant.proposal || a.to_chase ? `${(a.proposal ? 1 : 0) + 3} recommandations` : "Aucune recommandation"}</p></div>
+            <div><p className="font-semibold">M3aya Santé Assistant</p><p className="text-meta text-white/70">{data.assistant.proposal || a.to_chase ? `${(a.proposal ? 1 : 0) + 3} recommandations` : "Aucune recommandation"}</p></div>
           </div>
           {a.proposal && (
             <div className="mt-4 rounded-card border border-dashed border-signal/60 bg-white/5 p-3">
@@ -114,7 +114,7 @@ export default function CockpitPage() {
               <p className="mt-2 text-white/90">{text}</p>
               <Link to={to} className="mt-1 inline-flex items-center gap-1 font-semibold text-signal hover:underline">{cta} <ArrowRight size={14} /></Link>
             </div>))}
-          <p className="mt-5 border-t border-white/10 pt-3 text-meta text-white/60">CarePilot coordonne uniquement les tâches administratives. Aucun diagnostic, aucun envoi sans validation de votre équipe.</p>
+          <p className="mt-5 border-t border-white/10 pt-3 text-meta text-white/60">M3aya Santé coordonne uniquement les tâches administratives. Aucun diagnostic, aucun envoi sans validation de votre équipe.</p>
         </aside>
       </div>
 

@@ -47,7 +47,7 @@ export default function PortalPage() {
 
   const header = (
     <header className="flex items-center gap-3 border-b border-line bg-white px-4 py-3">
-      <Logo size={32} /><div className="flex-1 leading-tight"><p className="font-semibold text-navy-900">{data.establishment}</p><p className="text-meta text-ink-2">CarePilot</p></div>
+      <Logo size={32} /><div className="flex-1 leading-tight"><p className="font-semibold text-navy-900">{data.establishment}</p><p className="text-meta text-ink-2">M3aya Santé</p></div>
       <button className="rounded-ctl border border-line-strong px-2.5 py-1 text-sm font-medium" onClick={() => setLang(lang === "fr" ? "ar" : "fr")}>{lang === "fr" ? "العربية" : "Français"}</button>
       <button aria-label={t("logout")} title={t("logout")} onClick={() => logout()}><Avatar name={displayName() || data.first_name} className="h-9 w-9" /></button>
     </header>

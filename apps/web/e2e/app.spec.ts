@@ -21,7 +21,7 @@ test("cockpit : indicateurs, file prioritaire et assistant", async ({ page }) =>
   await expect(page.getByRole("heading", { name: /Bonjour Salma/ })).toBeVisible();
   await expect(page.getByText("Clinique Atlas · Casablanca").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "File prioritaire" })).toBeVisible();
-  await expect(page.getByLabel("CarePilot Assistant")).toContainText("uniquement les tâches administratives");
+  await expect(page.getByLabel("M3aya Santé Assistant")).toContainText("uniquement les tâches administratives");
 });
 
 test("détail d'un parcours : chronologie, documents AMO/CIN, suggestion à valider", async ({ page }) => {
@@ -30,7 +30,7 @@ test("détail d'un parcours : chronologie, documents AMO/CIN, suggestion à vali
   await expect(page.getByText("Chronologie du parcours")).toBeVisible();
   await expect(page.getByText("Attestation AMO (CNSS / CNOPS)").first()).toBeVisible();
   await expect(page.getByText("CIN ou passeport").first()).toBeVisible();
-  await expect(page.getByText("Suggestion CarePilot · validation humaine requise")).toBeVisible();
+  await expect(page.getByText("Suggestion M3aya Santé · validation humaine requise")).toBeVisible();
 });
 
 test("validation humaine : la proposition est validée et l'envoi est journalisé (simulé)", async ({ page }) => {
@@ -120,8 +120,8 @@ test("nouveau parcours : consentement d'information obligatoire, puis import CSV
   await dialog.getByLabel("Nom", { exact: true }).fill("Test-E2E");
   await dialog.getByLabel("Date de naissance").fill("05/06/1980");
   await dialog.getByLabel("Téléphone (Maroc)").fill("06 12 34 56 78");
-  await dialog.getByLabel("Intervention", { exact: true }).fill("Cataracte");
-  await dialog.getByLabel("Date d'intervention").fill("30/12/2030");
+  await dialog.getByLabel("Acte / motif du rendez-vous", { exact: true }).fill("Cataracte");
+  await dialog.getByLabel(/Date d.intervention/).fill("30/12/2030");
   await expect(dialog.getByRole("button", { name: "Créer le parcours" })).toBeDisabled();  // patient non informé
   await dialog.getByRole("checkbox").check();
   await dialog.getByRole("button", { name: "Créer le parcours" }).click();
@@ -151,7 +151,7 @@ test("paramètres de conformité : références CNDP et demandes d'exercice de d
 test("concepteur : un parcours publié est immuable, une nouvelle version est éditable", async ({ page }) => {
   await login(page, STAFF);
   await page.getByRole("link", { name: "Concepteur de parcours" }).click();
-  const v1 = await page.getByLabel("Version").locator("option", { hasText: "— v1" }).textContent();
+  const v1 = await page.getByLabel("Version").locator("option", { hasText: /^Chirurgie ambulatoire.*— v1$/ }).textContent();
   await page.getByLabel("Version").selectOption({ label: v1! });
   await expect(page.getByText("Publié", { exact: true })).toBeVisible();
   await expect(page.getByText("Un parcours publié est immuable")).toBeVisible();

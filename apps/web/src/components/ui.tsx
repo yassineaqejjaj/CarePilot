@@ -48,7 +48,7 @@ export const PriorityTag = ({ priority, children }: { priority: "urgent" | "high
 export const STATE_TONE: Record<string, Tone> = { completed: "neutral", late: "critical", action: "warning", waiting_patient: "info", on_track: "success" };
 
 /** Provenance IA : fond menthe, contour pointillé (planche §06). */
-export const AiTag = ({ children = "Suggestion CarePilot" }: { children?: React.ReactNode }) => (
+export const AiTag = ({ children = "Suggestion M3aya Santé" }: { children?: React.ReactNode }) => (
   <span className="inline-flex items-center gap-1.5 rounded-tag border border-dashed border-teal-500/60 bg-mint-100 px-2 py-0.5 text-meta font-semibold text-teal-800">
     <TraceMark size={12} /> {children}
   </span>

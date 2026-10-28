@@ -14,7 +14,7 @@ export default function ValidationPage() {
   return (
     <div className="space-y-5">
       <div className="space-y-1"><h1 className="text-[28px] font-semibold tracking-tight">File de validation</h1>
-        <p className="text-ink-2">Tout ce que CarePilot prépare attend ici votre validation. Rien ne part sans vous.</p></div>
+        <p className="text-ink-2">Tout ce que M3aya Santé prépare attend ici votre validation. Rien ne part sans vous.</p></div>
       {error ? <ErrorState onRetry={refetch} /> : !data ? <Skeleton className="h-64" /> : data.length === 0 ? <EmptyState title="Aucune tâche en attente" text="Tous les parcours du jour sont à jour." /> : (
         <ul className="space-y-4">
           {data.map((p) => (
