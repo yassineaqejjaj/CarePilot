@@ -76,7 +76,7 @@ test("staff can prepare insurance and an exact MAD estimate on a fictitious doss
   });
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
-  await page.getByRole("tab", { name: "Mesures", exact: true }).click();
+  await page.goto("/resultats");
   await expect(
     page.getByRole("heading", { name: "Mesurer avant et après le pilote" }),
   ).toBeVisible();
@@ -89,18 +89,18 @@ test("preparation worklist and rollout setup are accessible", async ({
   await staff(page);
   await page.goto("/operations");
   await expect(
-    page.getByRole("heading", { name: "La prochaine action, au bon endroit." }),
+    page.getByRole("heading", { name: "À traiter", exact: true }),
   ).toBeVisible();
   await expect(page.getByRole("table")).toBeVisible();
   await page.screenshot({
     path: "../../docs/screenshots/25-preparation-center.png",
     fullPage: false,
   });
-  await page.getByRole("tab", { name: "Démarrage", exact: true }).click();
+  await page.goto("/demarrage");
   await expect(
     page.getByRole("heading", { name: "Préparer le premier pilote" }),
   ).toBeVisible();
-  await page.getByRole("tab", { name: "Réseau", exact: true }).click();
+  await page.goto("/operations?onglet=reseau");
   await expect(
     page.getByRole("heading", { name: "Vos établissements autorisés" }),
   ).toBeVisible();

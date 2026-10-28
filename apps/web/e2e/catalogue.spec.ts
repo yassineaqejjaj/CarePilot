@@ -4,7 +4,7 @@ import { login, STAFF } from './helpers';
 test('nine pathways and new Moroccan identity are visible',async({page})=>{
  await login(page,STAFF);
  await expect(page.getByRole('img',{name:'M3aya Santé | معايا',exact:true}).first()).toBeVisible();
- await page.getByRole('link',{name:'Catalogue de parcours'}).click();
+ await page.getByRole('link',{name:'Bibliothèque de parcours'}).click();
  await expect(page.getByText('9 modèles de référence')).toBeVisible();
  await expect(page.getByRole('button',{name:'Explorer le parcours'})).toHaveCount(9);
  await page.locator('aside').first().evaluate(el=>el.scrollTop=0);await page.screenshot({path:'../../docs/screenshots/17-catalogue-m3aya.png',fullPage:true});
@@ -15,7 +15,7 @@ test('nine pathways and new Moroccan identity are visible',async({page})=>{
 });
 
 test('maternity reference opens an actual dedicated dossier without resetting data',async({page})=>{
- await login(page,STAFF);await page.getByRole('link',{name:'Catalogue de parcours'}).click();
+ await login(page,STAFF);await page.getByRole('link',{name:'Bibliothèque de parcours'}).click();
  const card=page.locator('div').filter({has:page.getByRole('heading',{name:'Maternité : admission et séjour',exact:true})}).filter({has:page.getByRole('button',{name:'Explorer le parcours'})});
  await page.getByLabel('Rechercher un parcours').fill('maternité');
  await page.getByRole('button',{name:'Explorer le parcours'}).click();
@@ -28,7 +28,7 @@ test('maternity reference opens an actual dedicated dossier without resetting da
 });
 
 test('imaging creation and designer select the correct published template',async({page})=>{
- await login(page,STAFF);await page.getByRole('link',{name:'Catalogue de parcours'}).click();await page.getByLabel('Rechercher un parcours').fill('IRM');await page.getByRole('button',{name:'Explorer le parcours'}).click();await page.getByRole('button',{name:'Créer un dossier sur ce modèle'}).click();
+ await login(page,STAFF);await page.getByRole('link',{name:'Bibliothèque de parcours'}).click();await page.getByLabel('Rechercher un parcours').fill('IRM');await page.getByRole('button',{name:'Explorer le parcours'}).click();await page.getByRole('button',{name:'Créer un dossier sur ce modèle'}).click();
  await expect(page.getByLabel('Modèle de parcours')).toHaveValue(/.+/);
  await expect(page.getByLabel('Modèle de parcours').locator('option:checked')).toHaveText('Imagerie médicale J-7 → J+2');
  await expect(page.getByLabel("Date de l'examen")).toBeVisible();

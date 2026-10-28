@@ -4,7 +4,7 @@ M3aya coordinates paperwork and human follow-up. It does not diagnose, triage, c
 
 ## Staff workflow
 
-Open **Centre de préparation** from the sidebar or the dashboard. Each row exposes the next administrative action, responsible service, deadline and the reason for follow-up. Patient help requests, contact corrections, unread replies, received documents and insurance requests are actionable in the same queue.
+Open **À traiter** from the sidebar or the dashboard. Its document, insurance, reply, help and human-approval tabs can be bookmarked; browser back/forward restores the chosen tab. The optional personal filter includes assigned and unassigned dossiers. Team, integration and pilot measurements now have separate navigation entries; old query links remain usable. Each row exposes the next administrative action, responsible service, deadline and the reason for follow-up. Patient help requests, contact corrections, unread replies, received documents and insurance requests are actionable in the same queue.
 
 Open a dossier to:
 
@@ -36,7 +36,7 @@ Duplicate suggestions use normalized name and optional birth date inside the cur
 
 ## Pilot measurement
 
-The measurement tab accepts observed task durations, grouped by administrative activity and baseline/pilot cohort. It displays sample sizes and differences of observed averages. Empty cohorts produce no invented gain; there is no causal attribution, automatic annual extrapolation or promised ROI. The network screen compares authorized sites. The seven-day activity count includes distinct human staff contributors from audit-role metadata; legacy events count only staff-only actions. Patient, companion and integration activity is excluded. The legacy analytics estimate remains explicitly labelled as an estimate and links to these observations.
+**Résultats du pilote** (`/resultats`) accepts observed task durations, grouped by administrative activity and baseline/pilot cohort. It displays sample sizes and differences of observed averages. Empty cohorts produce no invented gain; there is no causal attribution, automatic annual extrapolation or promised ROI. The network screen compares authorized sites. The seven-day activity count includes distinct human staff contributors from audit-role metadata; legacy events count only staff-only actions. Patient, companion and integration activity is excluded. The legacy analytics estimate remains explicitly labelled as an estimate and links to these observations.
 
 ## Security and deployment
 

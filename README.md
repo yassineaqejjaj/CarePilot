@@ -88,9 +88,46 @@ npx vercel deploy --prebuilt --prod
 
 The packager reads the backend destination from `apps/web/vercel.json` and copies only the generated public `dist` files into ignored `.vercel/output`. It never reads provider keys or patient records. After publication, verify `/`, `/app`, `/operations`, a static asset and an authenticated API call; a deployment marked Ready alone is not sufficient validation.
 
+## Navigation designed around clinic work
+
+The staff menu now separates everyday work, pathway configuration, pilot measurement and administration. Existing bookmarks remain usable.
+
+| Group | Entries | Who sees it |
+|---|---|---|
+| **Au quotidien** | Vue d’ensemble, À traiter, Dossiers patients, Communications | Staff |
+| **Parcours & automatisations** | Bibliothèque de parcours, Concepteur, Automatisations, Procédures administratives | Staff; designer/admin rights required for Concepteur |
+| **Pilotage** | Résultats du pilote, Rapports, Établissements | Staff; Établissements appears only with multiple authorized facilities |
+| **Administration** | Équipe & accès, Intégrations, Paramètres | Administrators |
+| **Aide** | Démo guidée | Staff |
+
+**Start with À traiter:** document review, insurance follow-up, patient replies, help/contact requests and pending human approvals have their own filters. Counters come from current dossiers; the sidebar counts actionable dossiers assigned to the current user or unassigned (all actionable dossiers for administrators), rather than all active patients. Coordinators start here automatically and can expand their view to the entire authorized establishment. All tasks and deadlines remain available from this screen.
+
+**Open a dossier:** Résumé, Documents, Assurance, Finances, Communications and Historique keep the same patient context. Insurance, finance and communication actions open the administrative side panel at the selected section. The contextual assistant button opens the dossier’s existing blockers and human-reviewed proposals; it does not introduce an autonomous action or send patient details to a new AI service.
+
+**Automatisations** combines agent monitoring and the action copilot. **Résultats du pilote** starts with observed baseline/pilot measurements and links separately to activity statistics and estimates. Pilot setup remains under Paramètres. `/app` opens the overview for administrators and other staff, or À traiter for coordinators. These navigation choices supplement backend authorization; hiding a menu never grants or revokes API permissions.
+
+**On mobile:** Accueil · À traiter · Dossiers · Messages · Plus. The Plus panel exposes the remaining authorized destinations and closes after selection. Patient and companion portals retain their separate navigation.
+
+![Staff navigation and actionable worklist](docs/screenshots/27-navigation-desktop.png)
+
+<img src="docs/screenshots/28-navigation-mobile.png" alt="Mobile navigation with the Plus panel open" width="300" />
+
+### Routes and compatibility
+
+| Destination | Route | Existing links retained |
+|---|---|---|
+| Overview | `/vue-ensemble` | `/app` resolves according to role |
+| Work queue | `/operations` | `/validation` opens the human approval tab; `/taches` remains available |
+| Pathway library | `/modeles` | Unchanged |
+| Automations | `/automatisations` | `/agents`; `/copilote` opens the copilot tab |
+| Pilot results | `/resultats` | `/analyses` remains the activity/estimate view; `/operations?onglet=mesures` still works |
+| Team, integrations, facilities | `/equipe`, `/integrations`, `/etablissements` | Legacy `/operations?onglet=equipe`, `integrations`, `reseau` remain usable within existing permissions |
+
+Navigation browser tests cover desktop grouping, mobile Plus, URL/back-button filters, legacy aliases, contextual dossier sections and coordinator navigation. They use synthetic data without resetting the demonstration.
+
 ## Administrative operations — release 0.5
 
-**[Open the preparation center](https://carepilot-maroc.vercel.app/operations)**
+**[Open À traiter](https://carepilot-maroc.vercel.app/operations)**
 
 The new center turns a dossier into an actionable workflow: who should act next, what is missing and which deadline to follow. It covers preparation, human handoffs and exception handling without making a medical decision.
 
@@ -139,7 +176,7 @@ The Keycloak login page now follows the M3aya Santé design system: a compact su
 
 **M3aya Santé — معايا** is the new working product name. *M3aya* means “with me” in Moroccan Darija: coordination that stays alongside each patient. The technical repository, identity realm and existing deployment URLs retain `carepilot` to preserve access. This is a working identity, not a trademark-clearance claim.
 
-Open **Catalogue de parcours** in the sidebar to filter by clinical activity, explore administrative milestones and required reference documents, simulate the template, customize it in the designer, or open a dedicated fictional example. New dossier creation now explicitly selects a published pathway. CSV imports may specify a catalogue key in the `pathway` column.
+Open **Bibliothèque de parcours** in the sidebar to filter by clinical activity, explore administrative milestones and required reference documents, simulate the template, customize it in the designer, or open a dedicated fictional example. New dossier creation now explicitly selects a published pathway. CSV imports may specify a catalogue key in the `pathway` column.
 
 | Catalogue key | Reference pathway | Reference window | Coordination focus |
 |---|---|---|---|
@@ -163,7 +200,7 @@ Demo startup installs missing reference templates additively; existing template 
 
 ### Your daily workflow
 
-1. Open the **Operations cockpit** to see urgent dossiers, missing paperwork and upcoming deadlines.
+1. Start in **À traiter** for the next administrative action, or open **Vue d’ensemble** for the wider operational picture.
 2. Create a patient journey manually, or import a **CSV** of scheduled procedures. Phone numbers are normalized to **+212**; dates accept **DD/MM/YYYY**.
 3. Send a patient an access link. They confirm their date of birth, read the privacy notice, then use a mobile portal in **French or Arabic**, including right-to-left layout.
 4. Review uploaded documents and mark them validated or request a replacement.

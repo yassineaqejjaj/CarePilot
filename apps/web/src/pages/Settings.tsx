@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -40,6 +41,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-[28px] font-semibold tracking-tight">Paramètres</h1>
+      <Link to="/demarrage" className="inline-block rounded-ctl border border-line px-4 py-3 text-teal-700">Préparer le premier pilote · contacts et horaires</Link>
       <Card><CardHeader><CardTitle>Conformité — loi 09-08 (CNDP)</CardTitle></CardHeader><CardContent>
         <p className="text-ink-2">Ces informations sont affichées au patient avant tout traitement. Le suivi des patients (données de santé) requiert l'autorisation préalable de la CNDP.</p>
         <form className="mt-3 grid gap-3 md:grid-cols-2" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>

@@ -42,3 +42,5 @@ export const logout = () => {
   return kc.logout({ redirectUri: window.location.origin });
 };
 export const displayName = () => patientSession()?.first_name ?? (kc.tokenParsed as { name?: string } | undefined)?.name ?? username();
+
+export const subject = () => kc.tokenParsed?.sub ?? "";

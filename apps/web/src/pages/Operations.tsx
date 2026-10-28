@@ -12,7 +12,8 @@ import {
   X,
 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
-import { roles } from "@/auth";
+import ValidationPage from "@/pages/Validation";
+import { roles, subject } from "@/auth";
 import {
   Button,
   Card,
@@ -198,21 +199,35 @@ type Metrics = {
   definition: string;
 };
 const fd = (f: HTMLFormElement) => Object.fromEntries(new FormData(f));
-export default function Operations() {
+export default function Operations({ mode }: { mode?: string }) {
   const qc = useQueryClient(),
     toast = useToast();
   const [params, setParams] = useSearchParams();
   const selected = params.get("dossier");
-  const [tab, setTab] = useState(
-      params.get("onglet") === "equipe"
-        ? "Équipe"
-        : params.get("onglet") === "reseau"
-          ? "Réseau"
-          : params.get("onglet") === "mesures"
-            ? "Mesures"
-            : "Dossiers",
-    ),
-    [search, setSearch] = useState(""),
+  const closeDossier = () =>
+    setParams((previous) => {
+      const next = new URLSearchParams(previous);
+      next.delete("dossier");
+      next.delete("section");
+      return next;
+    });
+  const tabs: Record<string, string> = {
+    equipe: "Équipe",
+    reseau: "Réseau",
+    mesures: "Mesures",
+    integrations: "Intégrations",
+    demarrage: "Démarrage",
+    documents: "Documents à vérifier",
+    assurances: "Assurances",
+    reponses: "Réponses patients",
+    aide: "Demandes d’aide",
+    validations: "Validations en attente",
+  };
+  const tab = mode ?? tabs[params.get("onglet") ?? ""] ?? "Dossiers";
+  const [personal, setPersonal] = useState(
+    !roles().includes("admin") && roles().includes("coordinator"),
+  );
+  const [search, setSearch] = useState(""),
     [mine, setMine] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -226,7 +241,7 @@ export default function Operations() {
     root?.querySelector<HTMLElement>("button")?.focus();
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setParams({});
+        closeDossier();
         return;
       }
       if (e.key === "Tab" && root) {
@@ -339,7 +354,11 @@ export default function Operations() {
       setBusy(false);
     }
   }
-  const rows = (q.data?.items ?? []).filter(
+  const scoped = (q.data?.items ?? []).filter(
+    (r) => !personal || !r.assigned_subject || r.assigned_subject === subject(),
+  );
+  const visibleItems = q.data ? scoped : undefined;
+  const rows = scoped.filter(
     (r) =>
       (r.patient + " " + r.reference + " " + r.owner)
         .toLowerCase()
@@ -350,35 +369,54 @@ export default function Operations() {
         r.help_pending > 0 ||
         r.profile_pending > 0 ||
         r.unread > 0) &&
-      (tab !== "Assurances" || r.insurance_pending > 0),
+      (tab !== "Assurances" || r.insurance_pending > 0) &&
+      (tab !== "Documents à vérifier" || r.submitted > 0) &&
+      (tab !== "Réponses patients" || r.unread > 0) &&
+      (tab !== "Demandes d’aide" ||
+        r.help_pending > 0 ||
+        r.profile_pending > 0),
   );
   const d = detail.data;
+  const section = params.get("section");
+  useEffect(() => {
+    if (d && section) {
+      const target = document.getElementById("case-" + section);
+      target?.scrollIntoView({ block: "start", behavior: "instant" });
+      target?.focus({ preventScroll: true });
+    }
+  }, [d?.id, section]);
   return (
     <div className="space-y-5">
       <div>
         <Pill tone="mint">Coordination administrative</Pill>
         <h1 className="mt-2 text-2xl font-semibold">
-          La prochaine action, au bon endroit.
+          {mode === "Mesures"
+            ? "Résultats du pilote"
+            : mode === "Équipe"
+              ? "Équipe & accès"
+              : (mode ?? "À traiter")}
         </h1>
         <p className="mt-2 text-ink-2">
-          Dossiers, assurances et équipes : un centre de préparation sans
-          décision médicale.
+          Les démarches administratives, leurs responsables et leurs échéances,
+          sans décision médicale.
         </p>
       </div>
       <div
         className="flex flex-wrap gap-2"
         role="tablist"
-        aria-label="Centre de préparation"
+        aria-label={mode ?? "À traiter"}
       >
-        {[
-          "Dossiers",
-          "Assurances",
-          "Équipe",
-          "Démarrage",
-          "Mesures",
-          ...(admin ? ["Intégrations"] : []),
-          "Réseau",
-        ].map((t) => (
+        {(mode
+          ? [mode]
+          : [
+              "Dossiers",
+              "Documents à vérifier",
+              "Assurances",
+              "Réponses patients",
+              "Demandes d’aide",
+              "Validations en attente",
+            ]
+        ).map((t) => (
           <button
             key={t}
             role="tab"
@@ -390,15 +428,44 @@ export default function Operations() {
                 : "border-line")
             }
             onClick={() => {
-              setTab(t);
               setError("");
-              setParams({});
+              setParams(
+                t === "Dossiers"
+                  ? {}
+                  : { onglet: Object.keys(tabs).find((k) => tabs[k] === t)! },
+              );
             }}
           >
-            {t}
+            {t === "Assurances" ? "Assurances à suivre" : t}
+            {q.data &&
+              [
+                "Documents à vérifier",
+                "Assurances",
+                "Réponses patients",
+                "Demandes d’aide",
+              ].includes(t) && (
+                <span className="ml-2 rounded-full bg-surface-2 px-2 text-meta">
+                  {
+                    scoped.filter((r) =>
+                      t === "Documents à vérifier"
+                        ? r.submitted > 0
+                        : t === "Assurances"
+                          ? r.insurance_pending > 0
+                          : t === "Réponses patients"
+                            ? r.unread > 0
+                            : r.help_pending > 0 || r.profile_pending > 0,
+                    ).length
+                  }
+                </span>
+              )}
           </button>
         ))}
       </div>
+      {!mode && (
+        <Link to="/taches" className="inline-block text-teal-700 underline">
+          Consulter toutes les tâches et échéances
+        </Link>
+      )}
       {error && (
         <p
           role="alert"
@@ -407,21 +474,39 @@ export default function Operations() {
           {error}
         </p>
       )}
-      {(tab === "Dossiers" || tab === "Assurances") && (
+      {tab === "Validations en attente" && <ValidationPage />}
+      {mode === "Mesures" && (
+        <Link className="inline-block text-teal-700 underline" to="/analyses">
+          Voir les statistiques d’activité et les estimations
+        </Link>
+      )}
+      {!mode && (
+        <p className="text-meta text-ink-2">
+          Les listes présentent les actions de votre établissement. Filtrez par
+          nom ou responsable pour organiser votre travail.
+        </p>
+      )}
+      {[
+        "Dossiers",
+        "Documents à vérifier",
+        "Assurances",
+        "Réponses patients",
+        "Demandes d’aide",
+      ].includes(tab) && (
         <>
           <div className="grid gap-3 sm:grid-cols-3">
             {[
               [
                 "Documents à vérifier",
-                q.data?.items.reduce((n, r) => n + r.submitted, 0),
+                visibleItems?.reduce((n, r) => n + r.submitted, 0),
               ],
               [
                 "Demandes assurance à suivre",
-                q.data?.items.reduce((n, r) => n + r.insurance_pending, 0),
+                visibleItems?.reduce((n, r) => n + r.insurance_pending, 0),
               ],
               [
                 "Dossiers sans pièce bloquante",
-                q.data?.items.filter((r) => r.missing === 0).length,
+                visibleItems?.filter((r) => r.missing === 0).length,
               ],
             ].map(([l, v]) => (
               <Card key={String(l)} className="p-4">
@@ -447,6 +532,14 @@ export default function Operations() {
                 onChange={(e) => setMine(e.target.checked)}
               />
               À traiter par l’équipe
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={personal}
+                onChange={(e) => setPersonal(e.target.checked)}
+              />
+              Mes dossiers et ceux sans responsable
             </label>
           </div>
           {q.isError ? (
@@ -508,7 +601,13 @@ export default function Operations() {
                         <Button
                           size="sm"
                           variant="secondary"
-                          onClick={() => setParams({ dossier: r.id })}
+                          onClick={() =>
+                            setParams((previous) => {
+                              const next = new URLSearchParams(previous);
+                              next.set("dossier", r.id);
+                              return next;
+                            })
+                          }
                         >
                           Ouvrir
                         </Button>
@@ -1027,6 +1126,40 @@ export default function Operations() {
                 <X />
               </button>
             </div>
+            <nav
+              aria-label="Rubriques du dossier"
+              className="mb-4 flex flex-wrap gap-2"
+            >
+              {[
+                ["resume", "Résumé"],
+                ["documents", "Documents"],
+                ["assurance", "Assurance"],
+                ["finances", "Finances"],
+                ["communications", "Communications"],
+                ["historique", "Historique"],
+              ].map(([key, label]) =>
+                ["resume", "documents"].includes(key) ? (
+                  <Link
+                    key={key}
+                    className="rounded-ctl border px-3 py-2"
+                    to={`/parcours/${selected}?onglet=${key}`}
+                  >
+                    {label}
+                  </Link>
+                ) : (
+                  <button
+                    key={key}
+                    aria-pressed={section === key}
+                    className="rounded-ctl border px-3 py-2 hover:bg-mint-100"
+                    onClick={() =>
+                      setParams({ dossier: selected!, section: key })
+                    }
+                  >
+                    {label}
+                  </button>
+                ),
+              )}
+            </nav>
             {error && (
               <p
                 role="alert"
@@ -1149,7 +1282,11 @@ export default function Operations() {
                   </Card>
                 )}
                 <Card className="p-5">
-                  <h3 className="font-semibold">
+                  <h3
+                    id="case-assurance"
+                    tabIndex={-1}
+                    className="scroll-mt-4 font-semibold"
+                  >
                     Prises en charge et assurances
                   </h3>
                   <div className="mt-3 space-y-3">
@@ -1265,7 +1402,11 @@ export default function Operations() {
                   </p>
                 </Card>
                 <Card className="p-5">
-                  <h3 className="font-semibold">
+                  <h3
+                    id="case-finances"
+                    tabIndex={-1}
+                    className="scroll-mt-4 font-semibold"
+                  >
                     Suivi financier administratif · MAD
                   </h3>
                   <div className="mt-3 grid grid-cols-2 gap-3">
@@ -1384,7 +1525,11 @@ export default function Operations() {
                   </ul>
                 </Card>
                 <Card className="p-5">
-                  <h3 className="font-semibold">
+                  <h3
+                    id="case-communications"
+                    tabIndex={-1}
+                    className="scroll-mt-4 font-semibold"
+                  >
                     Communications et reprise humaine
                   </h3>
                   <p className="mt-2 text-meta text-ink-2">
@@ -1554,7 +1699,13 @@ export default function Operations() {
                   </Card>
                 )}
                 <Card className="p-5">
-                  <h3 className="font-semibold">Transmissions et historique</h3>
+                  <h3
+                    id="case-historique"
+                    tabIndex={-1}
+                    className="scroll-mt-4 font-semibold"
+                  >
+                    Transmissions et historique
+                  </h3>
                   {write && (
                     <form
                       className="mt-3 flex gap-2"

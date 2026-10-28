@@ -40,7 +40,7 @@ async function freshJourney(page: Page) {
 }
 
 async function openKhadija(page: Page) {
-  await page.getByRole("link", { name: "Parcours patients" }).first().click();
+  await page.getByRole("link", { name: "Dossiers patients" }).first().click();
   await page.getByRole("link", { name: "Khadija Alaoui", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Khadija Alaoui" }),
@@ -87,7 +87,7 @@ test("détail d'un parcours : chronologie, documents AMO/CIN, suggestion à vali
   await expect(page.getByText("CIN ou passeport").first()).toBeVisible();
   await expect(
     page.getByRole("link", {
-      name: "Préparation, assurances et suivi financier",
+      name: "Assurance", exact: true,
     }),
   ).toBeVisible();
 });
@@ -96,7 +96,7 @@ test("validation humaine : la proposition est validée et l'envoi est journalis�
   page,
 }) => {
   await login(page, STAFF);
-  await page.getByRole("link", { name: "File de validation" }).click();
+  await page.goto("/validation");
   await expect(
     page.getByRole("heading", { name: "File de validation" }),
   ).toBeVisible();
@@ -238,7 +238,7 @@ test("nouveau parcours : consentement d'information obligatoire, puis import CSV
     page.getByRole("heading", { name: "Imad Test-E2E" }),
   ).toBeVisible();
   // import CSV : simulation puis import
-  await page.getByRole("link", { name: "Parcours patients" }).first().click();
+  await page.getByRole("link", { name: "Dossiers patients" }).first().click();
   await page.getByRole("button", { name: "Nouveau parcours" }).click();
   await page.getByRole("tab", { name: "Import CSV" }).click();
   const csv =
@@ -276,7 +276,7 @@ test("concepteur : un parcours publié est immuable, une nouvelle version est é
   page,
 }) => {
   await login(page, STAFF);
-  await page.getByRole("link", { name: "Concepteur de parcours" }).click();
+  await page.getByRole("link", { name: "Concepteur" }).click();
   const v1 = await page
     .getByLabel("Version")
     .locator("option", { hasText: /^Chirurgie ambulatoire.*— v1$/ })
