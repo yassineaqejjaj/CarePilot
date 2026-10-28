@@ -3,6 +3,8 @@
 **Administrative patient-journey coordination for Moroccan private clinics.**  
 *Every patient. Every step. Connected.*
 
+[Product walkthrough](https://github.com/user-attachments/assets/f6f8542e-7ebe-4b5e-8892-dd34fc8fe758)
+
 CarePilot gives an admissions team one place to prepare ambulatory surgery from **D−21 to D+7**: collect paperwork, see overdue tasks, prepare reminders, and keep an audit trail of human approvals.
 
 **[Open the live demo](https://carepilot-maroc.vercel.app)** · [Architecture](docs/architecture.md) · [Moroccan regulatory review](docs/compliance-morocco.md) · [Security](docs/security.md)
@@ -252,6 +254,8 @@ The Moroccan focus does not establish a blanket exemption from GDPR or the EU AI
 - Complete team management and template catalogue, hospital-system integration, insurer connections and qualified signatures if required.
 - Activate and verify messaging with approved senders/templates; evaluate AI on synthetic cases before enabling it.
 - Improve concurrent delivery/idempotency and retention coverage across derived records and backups.
+
+The repository also includes [CI checks](.github/workflows/ci.yml) for API tests and the frontend build, plus a [responsible disclosure policy](.github/SECURITY.md).
 
 ## Licenses
 
