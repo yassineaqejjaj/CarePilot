@@ -47,13 +47,25 @@ Build a digital infrastructure that progressively connects patients, healthcare 
 
 This vision describes the product’s direction. The demonstration limits below describe what is available today.
 
+## Public website
+
+The public landing page is available at `/` (French) and `/?lang=ar` (Arabic, RTL), without a login or patient API requests. The authenticated staff workspace starts at `/app`; existing patient invitation links and deep links continue to work.
+
+The page includes real screenshots with synthetic data, the nine pathway references, an interactive four-step walkthrough, an illustrative human approval panel, security/privacy notices, and a FAQ. Its demo-request form prepares an email to **yassine.aqejjaj@gmail.com** in the visitor’s email application; it does not submit data to a server or send email automatically. No patient data should be included.
+
+![Public website](docs/screenshots/19a-landing-hero.png)
+
+Validation: four public landing scenarios plus authentication and cockpit regression checks passed against production (six browser tests).
+
+Landing typography: Manrope Variable and IBM Plex Sans Arabic, bundled locally under the SIL Open Font License 1.1. Reduced-motion preferences, keyboard navigation and mobile/RTL layouts are supported. Performance and accessibility targets remain goals, not certified scores.
+
 ## Try the current application
 
 [Product walkthrough](https://github.com/user-attachments/assets/f6f8542e-7ebe-4b5e-8892-dd34fc8fe758)
 
 M3aya Santé (formerly CarePilot) gives clinic teams one place to coordinate nine administrative pathways, from specialist consultation to maternity and hospitalization: collect paperwork, see overdue tasks, prepare reminders, and keep an audit trail of human approvals.
 
-**[Open M3aya Santé](https://carepilot-maroc.vercel.app)** · [Architecture](docs/architecture.md) · [Moroccan regulatory review](docs/compliance-morocco.md) · [Security](docs/security.md)
+**[Discover M3aya Santé](https://carepilot-maroc.vercel.app)** · **[Open the application](https://carepilot-maroc.vercel.app/app)** · [Architecture](docs/architecture.md) · [Moroccan regulatory review](docs/compliance-morocco.md) · [Security](docs/security.md)
 
 > **Synthetic data only.** The public deployment is a demonstration. SMS, WhatsApp and email delivery are simulated; OpenAI is not configured. Do not enter real patient data. The application is not certified by the CNDP and does not make medical decisions. Online passwords are generated separately and are never committed here.
 
@@ -223,7 +235,7 @@ npm ci
 VITE_KEYCLOAK_URL=http://localhost:8081 VITE_API_TARGET=http://localhost:8010 npm run dev
 ```
 
-Open [localhost:5173](http://localhost:5173).
+Open [localhost:5173](http://localhost:5173) for the public website or [the application](http://localhost:5173/app) to sign in.
 
 | Development account | Development password | View |
 |---|---|---|

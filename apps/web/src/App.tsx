@@ -35,7 +35,7 @@ function Sidebar({ canDesign, tasks, journeys, validation }: { canDesign: boolea
   const ic = (C: LucideIcon) => <C size={18} />;
   const groups: { title: string; items: Item[] }[] = [
     { title: "Espace de travail", items: [
-      { to: "/", label: "Vue d'ensemble", icon: ic(LayoutDashboard) },
+      { to: "/app", label: "Vue d'ensemble", icon: ic(LayoutDashboard) },
       { to: "/parcours", label: "Parcours patients", icon: ic(RouteIcon), badge: journeys },
       { to: "/taches", label: "Tâches", icon: ic(CheckSquare), badge: tasks, tone: "red" },
       { to: "/communications", label: "Communications", icon: ic(MessageSquare) }] },
@@ -63,7 +63,7 @@ function Sidebar({ canDesign, tasks, journeys, validation }: { canDesign: boolea
         <nav key={g.title} aria-label={g.title} className="mb-4">
           <p className="mb-1 px-2 text-[11px] font-semibold uppercase tracking-wider text-teal-700">{g.title}</p>
           {g.items.map((i) => (
-            <NavLink key={i.to} to={i.to} end={i.to === "/"} className={({ isActive }) =>
+            <NavLink key={i.to} to={i.to} end={i.to === "/app"} className={({ isActive }) =>
               cn("flex items-center gap-3 rounded-ctl px-2.5 py-2 font-medium text-ink hover:bg-surface-2", isActive && "bg-mint-100 font-semibold text-teal-800")}>
               <span className="text-ink-2">{i.icon}</span><span className="flex-1">{i.label}</span>
               {i.badge !== undefined && i.badge !== 0 && (
@@ -132,7 +132,7 @@ function StaffApp() {
         <main className="mx-auto max-w-[1180px] px-6 py-6">
           <Suspense fallback={<p role="status" className="p-6 text-ink-2">Chargement…</p>}>
           <Routes>
-            <Route path="/" element={<CockpitPage />} />
+            <Route path="/app" element={<CockpitPage />} />
             <Route path="/parcours" element={<JourneysPage />} />
             <Route path="/parcours/:id" element={<JourneyDetailPage />} />
             <Route path="/validation" element={<ValidationPage />} />
@@ -149,7 +149,7 @@ function StaffApp() {
             {isAdmin && <Route path="/parametres" element={<Settings />} />}
             {[["equipe", "Équipe"], ...(isAdmin ? [] : [["parametres", "Paramètres"]])].map(([p, t]) =>
               <Route key={p} path={`/${p}`} element={<ComingSoon title={t} />} />)}
-            <Route path="*" element={<Navigate to="/" />} />
+            <Route path="*" element={<Navigate to="/app" />} />
           </Routes>
           </Suspense>
         </main>
