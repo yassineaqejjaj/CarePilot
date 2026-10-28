@@ -12,3 +12,8 @@ openai>=1.50
 celery>=5.4
 prometheus-client>=0.20
 python-multipart>=0.0.9
+reportlab>=4.2
+faster-whisper>=1.1,<2
+pypdf>=5
+# faster-whisper 1.x requires PyAV's metadata_errors argument (removed in PyAV 19).
+av>=14,<16

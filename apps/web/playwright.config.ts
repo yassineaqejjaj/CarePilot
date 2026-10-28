@@ -6,5 +6,5 @@ export default defineConfig({
   testDir: "e2e",
   workers: 1, // les scénarios partagent la même base de démo
   retries: 0,
-  use: { baseURL: process.env.E2E_BASE_URL ?? "http://localhost:5173", channel: process.env.E2E_CHANNEL ?? "chrome", trace: "retain-on-failure" },
+  use: { baseURL: process.env.E2E_BASE_URL ?? "http://localhost:5173", channel: process.env.E2E_CHANNEL ?? "chrome", trace: "retain-on-failure", launchOptions: { args: process.env.E2E_AUDIO_FIXTURE ? ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", `--use-file-for-fake-audio-capture=${process.env.E2E_AUDIO_FIXTURE}`] : [] } },
 });

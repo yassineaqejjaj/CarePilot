@@ -3,3 +3,10 @@ node_modules
 .git
 **/dist
 **/test-results
+
+**/node_modules
+**/.vercel
+.deploy
+.env*
+**/.env*
+**/__pycache__

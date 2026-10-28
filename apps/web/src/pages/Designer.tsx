@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import ReactFlow, { Background, Controls, MarkerType, Position, type Edge, type Node } from "reactflow";
 import "reactflow/dist/style.css";
+import Simulator from "@/components/Simulator";
 import { api } from "@/lib/api";
 import { Button, Card, CardContent, CardHeader, CardTitle, Pill } from "@/components/ui";
 
@@ -24,6 +25,7 @@ const dayLabel = (d: number) => (d === 0 ? "J" : d < 0 ? `J${d}` : `J+${d}`);
 export default function Designer() {
   const qc = useQueryClient();
   const { data: templates } = useQuery({ queryKey: ["templates"], queryFn: () => api<Template[]>("/templates") });
+  const [simulating, setSimulating] = useState(false);
   const [tplId, setTplId] = useState<string>();
   const [steps, setSteps] = useState<Step[]>([]);
   const [sel, setSel] = useState<number | null>(null);
@@ -76,6 +78,7 @@ export default function Designer() {
   if (templates.length === 0) return <Button onClick={() => seed.mutate()}>Créer le parcours chirurgie ambulatoire</Button>;
   return (
     <div className="space-y-4">
+      {simulating && <Simulator steps={steps} onClose={() => setSimulating(false)} />}
       <div className="flex items-center gap-3">
         <h1 className="text-[28px] font-semibold tracking-tight">Concepteur de parcours</h1>
         <select aria-label="Version" className="h-9 rounded-ctl border border-line-strong px-2 text-sm" value={tplId} onChange={(e) => setTplId(e.target.value)}>
@@ -83,6 +86,7 @@ export default function Designer() {
         </select>
         {tpl && <Pill tone={tpl.status === "published" ? "success" : "neutral"}>{tpl.status === "published" ? "Publié" : tpl.status === "draft" ? "Brouillon" : "Archivé"}</Pill>}
         <div className="ml-auto flex gap-2">
+          <Button variant="secondary" onClick={() => setSimulating(true)}>Tester ce parcours</Button>
           {editable ? (
             <>
               <Button variant="secondary" disabled={save.isPending} onClick={() => save.mutate()}>Enregistrer</Button>

@@ -7,6 +7,9 @@ import type { JourneyDetail } from "@/lib/types";
 import { useProposal } from "@/lib/useProposal";
 import { dateTime, dayMonth, longDate } from "@/lib/format";
 import { AiTag, Button, Card, Confirm, ErrorState, Pill, Progress, Skeleton, STATE_TONE, useToast, type Tone } from "@/components/ui";
+import DocumentReading from "@/components/DocumentReading";
+import Blockers from "@/components/Blockers";
+import { LiveBadge } from "@/lib/live";
 import { cn } from "@/lib/utils";
 
 const DOC_TONE: Record<string, Tone> = { "Validé": "success", "En revue": "info", "Manquant": "critical" };
@@ -61,6 +64,8 @@ export default function JourneyDetailPage() {
         </div>
       </Card>
 
+      <LiveBadge />
+      <Blockers id={id!} />
       {na && (
         <section className="rounded-panel border border-dashed border-teal-500/60 bg-mint-100/60 p-5" aria-label="Prochaine action administrative">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-teal-800">Prochaine action administrative</p>
@@ -122,7 +127,8 @@ export default function JourneyDetailPage() {
                 <li key={x.id} className="flex flex-wrap items-center gap-2 py-2.5"><FileText size={16} className="text-ink-2" /><span className="min-w-0 flex-1">{x.title}</span><Pill tone={DOC_TONE[x.status]}>{x.status}</Pill>
                   {x.file_id && <Button size="sm" variant="ghost" onClick={() => download(`/documents/${x.file_id}/download`, x.file_name ?? "piece").catch(() => toast({ tone: "critical", title: "Téléchargement impossible" }))}>Voir</Button>}
                   {x.status === "En revue" && <><Button size="sm" variant="secondary" disabled={docM.isPending} onClick={() => docM.mutate({ tid: x.id, action: "complete" })}>Valider</Button>
-                    <Button size="sm" variant="ghost" disabled={docM.isPending} onClick={() => docM.mutate({ tid: x.id, action: "reject" })}>Redemander</Button></>}</li>))}
+                    <Button size="sm" variant="ghost" disabled={docM.isPending} onClick={() => docM.mutate({ tid: x.id, action: "reject" })}>Redemander</Button></>}
+                  {x.file_id && <DocumentReading id={x.file_id} reviewed={x.status === "Validé"} />}</li>))}
             </ul>
           </Card>
           <Card className="p-5">

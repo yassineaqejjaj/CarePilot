@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 const creds = Object.fromEntries(fs.readFileSync('.deploy/credentials.txt', 'utf8').trim().split('\n').map(l => l.split(' / ')));
-const result = spawnSync(process.execPath, ['node_modules/@playwright/test/cli.js', 'test'], {
+const result = spawnSync(process.execPath, ['node_modules/@playwright/test/cli.js', 'test', ...process.argv.slice(2)], {
   cwd: 'apps/web', stdio: 'inherit', env: { ...process.env,
     E2E_BASE_URL: process.env.E2E_BASE_URL ?? 'https://carepilot-maroc.vercel.app',
     E2E_STAFF_PASSWORD: creds['staff.demo'], E2E_PATIENT_PASSWORD: creds['patient.demo'] }

@@ -86,6 +86,40 @@ Administrators configure the clinic's CNDP references, rights contact and retent
 
 The patient portal is bilingual; the staff interface is currently French. **Team management** and **template catalogue** remain placeholder pages. User administration uses Keycloak.
 
+## Interactive product experience (v0.3)
+
+Start with **Guided demo** in the staff sidebar. It creates one new fictional patient, Amal, without resetting existing records. Deposit a generated insurance certificate in the phone preview, inspect the local reading and confirm the human validation. The dossier moves from 80% to 100% complete.
+
+![Guided patient and coordinator demo](docs/screenshots/13-guided-demo.png)
+
+- **Local document reading:** Tesseract (French/Arabic/English) reads images; Poppler extracts embedded PDF text or renders the first two pages. Suggested type, labelled fields and explicitly labelled expiry dates are returned for review. Reports are encrypted at rest. No document is sent to OpenAI and no identity field or task status is silently changed.
+- **Action copilot:** type “Prépare les relances des dossiers incomplets opérés cette semaine” or use the next-seven-days example. Inspect the affected dossiers and draft text, then confirm preparation. Drafts still require human approval in the validation queue before delivery. Plans expire after 15 minutes, are idempotent, and skip changed dossiers or those already awaiting a reminder.
+- **Live dossier updates:** authenticated revision polling every three seconds refreshes active staff and patient views. Open the same dossier on two clients to watch validation appear without reloading. This is short polling, not a push/WebSocket guarantee.
+- **Explainable blockers:** each dossier shows overdue or submitted tasks, why they need attention, responsibility and the next permitted action. This does not predict cancellations or decide clinical eligibility.
+- **Journey simulator:** click **Tester ce parcours** in the designer. Play, pause or scrub through the current template, including unsaved stages; choose an on-time or missing-document scenario. Simulation does not write records or send messages.
+- **French / Darija patient assistant:** open **Messages** in the patient portal. Answers quote the clinic's approved procedure cards, with source and version. Unsupported or medical questions can be passed to the team; the encrypted request appears in **Communications**. Administrators publish procedure cards under **Procédures patient**. Demo cards are visibly labelled as demo references.
+- **Voice input:** microphone capture is limited to 30 seconds. `faster-whisper` transcribes on the server CPU using an included multilingual tiny model; audio files are then removed. Patients must review and send the editable transcription themselves. Playback uses an installed local browser voice when available. Darija accuracy still requires native-speaker evaluation; transcription can be inaccurate and is never treated as an instruction to send a message.
+
+![Action copilot preview](docs/screenshots/15-copilot.png)
+![Journey simulation](docs/screenshots/14-simulator.png)
+<img src="docs/screenshots/16-darija-assistant.png" width="320" alt="Patient assistant answering in Darija with a procedure source">
+
+The assistant currently uses deterministic retrieval of approved procedure cards, not unrestricted generative conversation. The copilot supports reminder preparation for the documented date ranges; unsupported requests do not execute actions. Both work without an OpenAI key. Local speech recognition is an open-source transcription component; OpenAI remains the sole provider for the application's external LLM generation and embeddings.
+
+### Extra validation and setup
+
+`pytest` includes scope, encryption, no-automatic-validation, stale-plan, duplicate-plan, procedure-version, handoff and simulation-isolation tests. `e2e/wow.spec.ts` adds browser scenarios without resetting the demo. Microphone testing uses a generated fictional English recording; this verifies capture/transcription/review, not Darija accuracy.
+
+The Docker API image includes Tesseract, Poppler, FFmpeg and the speech model; its first build downloads public model weights. For a host-run API, install the system OCR/audio tools and set `VOICE_MODEL_PATH` to a local compatible faster-whisper model directory. If unavailable, document review stays manual and dictation is disabled with an explanation. `DEMO_MODE=true` is required for guided scenarios. Existing dossiers are retained by the additive `0002` migration.
+
+```bash
+# Test new screens without resetting existing demo data
+(cd apps/web && npx playwright test e2e/wow.spec.ts)
+# Verify OCR and audio with entirely synthetic inputs inside the Docker image
+docker build -f Dockerfile.api -t carepilot-wow:test .
+docker run --rm -v "$PWD/scripts/verify-local-engines.py:/verify.py:ro" carepilot-wow:test python /verify.py
+```
+
 ## Run locally
 
 Requirements: **Python 3.12**, **Node.js 20+**, Docker Compose or Podman Compose. The repository is private.
@@ -224,7 +258,7 @@ export DATABASE_URL=postgresql+psycopg://carepilot:carepilot@localhost:5442/care
 (cd apps/web && npm run e2e)
 ```
 
-Validation: **37 pytest tests passed** locally, including real pgvector retrieval; **10 Playwright scenarios passed locally and all 10 also passed against the live Vercel/Railway deployment** on 28 October 2026. They cover tenant isolation, patient consent, link lockout, encrypted files, invalid uploads, rights/erasure, retention, CSV simulation/import and human approval. The browser tests mutate synthetic data. `scripts/test-deployed.mjs` runs against the online demo using the owner's ignored credentials file; do not run it against a clinic environment.
+Validation: **37 pytest tests passed** locally, including real pgvector retrieval; **10 original Playwright scenarios passed locally and against the live Vercel/Railway deployment** on 28 October 2026. They cover tenant isolation, patient consent, link lockout, encrypted files, invalid uploads, rights/erasure, retention, CSV simulation/import and human approval. The browser tests mutate synthetic data. `scripts/test-deployed.mjs` runs against the online demo using the owner's ignored credentials file; do not run it against a clinic environment.
 
 ### Deployment
 

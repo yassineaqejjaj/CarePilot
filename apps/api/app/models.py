@@ -259,3 +259,45 @@ class MessageLog(Base):
     provider_ref: Mapped[str] = mapped_column(String(80), default="")
     error: Mapped[str] = mapped_column(String(300), default="")
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class DocumentReading(Base):
+    """Local OCR report, encrypted like the source document. Never auto-validates a task."""
+    __tablename__ = "document_reading"
+    document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("document.id"), primary_key=True)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    encrypted_report: Mapped[bytes] = mapped_column(LargeBinary)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class ActionPlan(Base):
+    __tablename__ = "action_plan"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    actor: Mapped[str] = mapped_column(String(100))
+    intent: Mapped[str] = mapped_column(String(30))
+    payload: Mapped[dict] = mapped_column(JSON)
+    status: Mapped[str] = mapped_column(String(20), default="preview")
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class ProcedureCard(Base):
+    __tablename__ = "procedure_card"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    topic: Mapped[str] = mapped_column(String(40))
+    title: Mapped[str] = mapped_column(String(200))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(String(20), default="draft")
+    content: Mapped[dict] = mapped_column(JSON)  # fr / darija, controlled administrative procedures
+    approved_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+
+class SupportRequest(Base):
+    __tablename__ = "support_request"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    patient_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patient.id"), index=True)
+    encrypted_message: Mapped[bytes] = mapped_column(LargeBinary)
+    status: Mapped[str] = mapped_column(String(20), default="open")
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)

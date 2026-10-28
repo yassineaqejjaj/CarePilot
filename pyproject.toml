@@ -17,6 +17,10 @@ dependencies = [
   "celery>=5.4",
   "prometheus-client>=0.20",
   "python-multipart>=0.0.9",
+  "reportlab>=4.2",
+  "pypdf>=5",
+  "faster-whisper>=1.1,<2",
+  "av>=14,<16",
 ]
 
 [project.optional-dependencies]

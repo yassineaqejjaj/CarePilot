@@ -6,6 +6,8 @@ import { displayName, logout } from "@/auth";
 import type { Portal } from "@/lib/types";
 import { Avatar, Button, ErrorState, Logo, Pill, Progress, Skeleton, useToast } from "@/components/ui";
 import { useLang, taskTitle, type Lang } from "@/i18n";
+import PatientAssistant from "@/components/PatientAssistant";
+import { LiveUpdates, LiveBadge } from "@/lib/live";
 import { cn } from "@/lib/utils";
 
 type Tab = "home" | "tasks" | "journey" | "messages" | "rights";
@@ -95,10 +97,12 @@ export default function PortalPage() {
   return (
     <div className="mx-auto flex min-h-screen max-w-[430px] flex-col bg-page">
       {header}
+      <LiveUpdates />
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,application/pdf" capture="environment" className="hidden" aria-label="Fichier"
         onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; const id = pendingTask.current || todo?.id; if (f && id) upload.mutate({ id, file: f }); }} />
       <main className="flex-1 space-y-5 px-4 pb-24 pt-5 text-patient">
         <h1 className="text-[22px] font-semibold leading-snug">{t("greeting", { name: data.first_name })}</h1>
+        <LiveBadge />
         {!j ? <p>—</p> : (<>
           {tab === "home" && (todo ? (
             <section className="rounded-panel bg-navy-900 p-5 text-white shadow-menu" aria-label={t("todo.before", { date: dm(todo.due_date, lang) })}>
@@ -127,6 +131,7 @@ export default function PortalPage() {
                   <div className="w-12 shrink-0 rounded-ctl bg-mint-100 py-1 text-center text-teal-800"><p className="text-[10px] font-semibold uppercase">{d.toLocaleDateString(locale(lang), { month: "short" })}</p><p className="text-lg font-bold tabular-nums">{d.getDate()}</p></div>
                   <p className="flex-1 self-center">{text as string}</p></div>);
               })}</section>)}
+          {tab === "messages" && <PatientAssistant arabic={lang === "ar"} />}
           {tab === "messages" && (
             <section aria-label={t("messages.title")}><h2 className="mb-2 text-lg font-semibold">{t("messages.title")}</h2>
               {j.messages.length === 0 ? <p className="rounded-panel border border-line bg-white p-4 text-ink-2">{t("messages.none")}</p> :

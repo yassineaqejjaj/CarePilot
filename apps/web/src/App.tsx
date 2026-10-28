@@ -21,6 +21,10 @@ import Tasks from "@/pages/Tasks";
 import Communications from "@/pages/Communications";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
+import Copilot from "@/pages/Copilot";
+import GuidedDemo from "@/pages/GuidedDemo";
+import Procedures from "@/pages/Procedures";
+import { LiveUpdates, LiveBadge } from "@/lib/live";
 import ComingSoon from "@/pages/ComingSoon";
 
 type Item = { to: string; label: string; icon: React.ReactNode; badge?: number | string; tone?: "red" | "mint" };
@@ -36,6 +40,9 @@ function Sidebar({ canDesign, tasks, journeys, validation }: { canDesign: boolea
     { title: "Automatisation", items: [
       ...(canDesign ? [{ to: "/concepteur", label: "Concepteur de parcours", icon: ic(GitBranch) }] : []),
       { to: "/agents", label: "Agents IA", icon: ic(Bot) },
+      { to: "/copilote", label: "Copilote d’action", icon: ic(Bot) },
+      { to: "/demo", label: "Démo guidée", icon: ic(LayoutDashboard) },
+      { to: "/procedures", label: "Procédures patient", icon: ic(FileText) },
       { to: "/validation", label: "File de validation", icon: ic(ShieldCheck), badge: validation, tone: "mint" as const }] },
     { title: "Pilotage", items: [
       { to: "/analyses", label: "Analyses", icon: ic(BarChart3) },
@@ -118,6 +125,7 @@ function StaffApp() {
     <div className="flex min-h-screen">
       <Sidebar canDesign={canDesign} tasks={k?.tasks_to_treat} journeys={k?.active} validation={cockpit.data?.validation_pending} />
       <div className="min-w-0 flex-1">
+        <LiveUpdates />
         <Topbar me={me.data} pending={cockpit.data?.validation_pending} />
         <main className="mx-auto max-w-[1180px] px-6 py-6">
           <Routes>
@@ -127,6 +135,9 @@ function StaffApp() {
             <Route path="/validation" element={<ValidationPage />} />
             {canDesign && <Route path="/concepteur" element={<Designer />} />}
             <Route path="/agents" element={<Agents />} />
+            <Route path="/copilote" element={<Copilot />} />
+            <Route path="/demo" element={<GuidedDemo />} />
+            <Route path="/procedures" element={<Procedures />} />
             <Route path="/analyses" element={<Analytics />} />
             <Route path="/taches" element={<Tasks />} />
             <Route path="/communications" element={<Communications />} />

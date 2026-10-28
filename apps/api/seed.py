@@ -63,7 +63,7 @@ def seed(db: Session) -> None:
         if not os.environ.get("RESET"):
             print("déjà seedé")
             return
-        for t in (m.MessageLog, m.Document, m.StoredFile, m.Invitation, m.DataRequest, m.Consent, m.AIProposal, m.AIUsage, m.AuditLog,
+        for t in (m.DocumentReading, m.SupportRequest, m.ActionPlan, m.ProcedureCard, m.MessageLog, m.Document, m.StoredFile, m.Invitation, m.DataRequest, m.Consent, m.AIProposal, m.AIUsage, m.AuditLog,
                   m.KnowledgeChunk, m.KnowledgeDocument, m.Task, m.PatientJourney, m.Patient, m.TemplateStep, m.JourneyTemplate, m.Establishment):
             db.execute(delete(t))
         db.flush()

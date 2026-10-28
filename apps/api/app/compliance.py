@@ -43,12 +43,21 @@ def anonymize_patient(db: Session, patient: m.Patient) -> None:
     journeys = db.scalars(select(m.PatientJourney).where(m.PatientJourney.patient_id == patient.id)).all()
     for j in journeys:
         for doc in db.scalars(select(m.Document).where(m.Document.journey_id == j.id)).all():
+            report = db.get(m.DocumentReading, doc.id)
+            if report:
+                db.delete(report)
             storage.delete_file(db, doc)
             db.delete(doc)
         for t in j.tasks:
             t.response = None
         for inv in db.scalars(select(m.Invitation).where(m.Invitation.journey_id == j.id)).all():
             db.delete(inv)
+    for request in db.scalars(select(m.SupportRequest).where(m.SupportRequest.patient_id == patient.id)).all():
+        db.delete(request)
+    # Prepared action plans may contain locally rendered names/messages.
+    for plan in db.scalars(select(m.ActionPlan).where(m.ActionPlan.establishment_id == patient.establishment_id)).all():
+        if any(i.get("journey_id") in {str(j.id) for j in journeys} for i in plan.payload.get("items", [])):
+            db.delete(plan)
     patient.first_name, patient.last_name = "Patient", "archivé"
     patient.email = patient.phone = ""
     patient.birth_date = None
@@ -89,6 +98,9 @@ def export_patient_data(db: Session, patient: m.Patient) -> dict:
             "messages": [{"channel": x.channel, "kind": x.kind, "status": x.status, "at": x.created_at.isoformat()}
                          for x in db.scalars(select(m.MessageLog).where(m.MessageLog.journey_id == j.id)).all()],
         } for j in journeys],
+        "support_requests": [{"status": r.status, "created_at": r.created_at.isoformat(),
+                              "message": storage._fernet().decrypt(r.encrypted_message).decode()}
+                             for r in db.scalars(select(m.SupportRequest).where(m.SupportRequest.patient_id == patient.id)).all()],
         "consents": [{"version": c.notice_version, "given_at": c.given_at.isoformat(), "channel": c.channel}
                      for c in db.scalars(select(m.Consent).where(m.Consent.patient_id == patient.id)).all()],
     }

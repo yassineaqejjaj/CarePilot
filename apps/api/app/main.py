@@ -2,14 +2,15 @@ from fastapi import FastAPI, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from app.ratelimit import security_middleware
-from app.routers import ai_routes, core_routes, ops_routes, portal
+from app.routers import ai_routes, core_routes, ops_routes, portal, experience_routes
 
-app = FastAPI(title="CarePilot API", version="0.2.0")
+app = FastAPI(title="CarePilot API", version="0.3.0")
 app.middleware("http")(security_middleware)
 app.include_router(core_routes.router, prefix="/api")
 app.include_router(ai_routes.router, prefix="/api")
 app.include_router(ops_routes.router, prefix="/api")
 app.include_router(portal.router, prefix="/api")
+app.include_router(experience_routes.router, prefix="/api")
 
 
 @app.get("/healthz")

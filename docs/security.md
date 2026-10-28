@@ -19,3 +19,12 @@ Le cadre réglementaire (Maroc, loi 09-08 / CNDP) est détaillé dans [complianc
 
 ## Coûts OpenAI
 Une génération structurée = un appel Responses ; chaque chargement de procédure = un appel d'embeddings par lot ; chaque agent avec RAG ajoute un embedding de requête. À mesurer sur données fictives via `GET /api/ai/usage` avant de fixer un budget. Les tarifs ne sont pas codés en dur (`OPENAI_PRICE_*`).
+
+
+## v0.3 — assistance et démonstration
+- OCR local sur deux pages maximum, délai d'exécution limité, deux lectures simultanées maximum ; résultats chiffrés et validation humaine obligatoire. Aucun fichier ni texte OCR n'est envoyé à un LLM.
+- Dictée locale (faster-whisper, modèle multilingue tiny) : 30 secondes / 5 Mo maximum, une transcription à la fois ; fichiers temporaires supprimés après traitement. Le patient doit relire le résultat avant d'envoyer. La précision en darija n'a pas encore fait l'objet d'une évaluation native.
+- Copilote : aperçu stocké et périmétré par établissement/auteur, expiration à 15 minutes, confirmation idempotente, contrôle des statuts courants avant création de brouillons. Les actions du copilote ne déclenchent pas d'envoi.
+- Assistant patient : seules les cartes de procédures approuvées du même établissement sont citées. Les questions hors périmètre peuvent être transmises au personnel. Les demandes sont chiffrées, visibles au personnel habilité et incluses dans l'export patient. Aucune conversation libre n'est transmise à OpenAI.
+- Simulation : aucune écriture. Démonstration guidée : création additive d'un patient fictif dédié, réservée au mode DEMO_MODE, sans remise à zéro des dossiers existants.
+- Synchronisation : interrogation authentifiée d'une révision toutes les trois secondes ; aucun jeton dans une URL de flux public.
