@@ -14,15 +14,15 @@ export const initAuth = () => (ready ??= kc.init({ onLoad: "login-required", pkc
 
 // Session patient (lien sécurisé) : jeton court gardé en sessionStorage, jamais en localStorage.
 const KEY = "cp_patient_session";
-export type PatientSession = { access_token: string; exp: number; first_name: string; language: string };
+export type PatientSession = { access_token: string; exp: number; first_name: string; language: string; delegated?: boolean };
 export function patientSession(): PatientSession | null {
   try {
     const s = JSON.parse(sessionStorage.getItem(KEY) ?? "null") as PatientSession | null;
     return s && s.exp > Date.now() ? s : null;
   } catch { return null; }
 }
-export const setPatientSession = (r: { access_token: string; expires_in: number; first_name: string; language: string }) =>
-  sessionStorage.setItem(KEY, JSON.stringify({ access_token: r.access_token, exp: Date.now() + r.expires_in * 1000 - 60_000, first_name: r.first_name, language: r.language }));
+export const setPatientSession = (r: { access_token: string; expires_in: number; first_name: string; language: string; delegated?: boolean }) =>
+  sessionStorage.setItem(KEY, JSON.stringify({ access_token: r.access_token, exp: Date.now() + r.expires_in * 1000 - 60_000, first_name: r.first_name, language: r.language, delegated: !!r.delegated }));
 
 export async function getToken(): Promise<string> {
   const ps = patientSession();
@@ -32,9 +32,12 @@ export async function getToken(): Promise<string> {
   return kc.token ?? "";
 }
 
-export const roles = (): string[] => patientSession() ? ["patient"] : (kc.tokenParsed as { realm_access?: { roles: string[] } } | undefined)?.realm_access?.roles ?? [];
+let effectiveRoles: string[] | undefined;
+export const setEffectiveRoles=(value:string[])=>{effectiveRoles=value};
+export const roles = (): string[] => patientSession() ? ["patient"] : effectiveRoles ?? (kc.tokenParsed as { realm_access?: { roles: string[] } } | undefined)?.realm_access?.roles ?? [];
 export const username = () => patientSession()?.first_name ?? (kc.tokenParsed as { preferred_username?: string } | undefined)?.preferred_username ?? "";
 export const logout = () => {
+  sessionStorage.removeItem("m3aya_site");
   if (patientSession()) { sessionStorage.removeItem(KEY); window.location.href = "/"; return; }
   return kc.logout({ redirectUri: window.location.origin });
 };

@@ -123,13 +123,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = React.useState<ToastMsg[]>([]);
   const push = React.useCallback((t: Omit<ToastMsg, "id">) => {
     const id = Date.now() + Math.random();
-    setItems((x) => [...x, { ...t, id }]);
+    setItems((x) => [...x.filter(i=>!(i.title===t.title&&i.text===t.text&&i.tone===t.tone)).slice(-2), { ...t, id }]);
     setTimeout(() => setItems((x) => x.filter((i) => i.id !== id)), 6000);
   }, []);
   return (
     <ToastCtx.Provider value={push}>
       {children}
-      <div className="fixed bottom-4 right-4 z-50 flex w-80 flex-col gap-2" aria-live="polite">
+      <div className="fixed bottom-4 right-4 z-50 flex w-80 max-w-[calc(100vw-32px)] flex-col gap-2" aria-live="polite">
         {items.map((t) => (
           <div key={t.id} className={cn("rounded-card border border-line bg-white p-3 shadow-menu", { success: "border-l-4 border-l-success", critical: "border-l-4 border-l-critical", warning: "border-l-4 border-l-warning" }[t.tone as string])}>
             <p className="font-semibold text-navy-900">{t.title}</p>{t.text && <p className="text-ink-2">{t.text}</p>}

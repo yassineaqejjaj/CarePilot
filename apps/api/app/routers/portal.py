@@ -77,6 +77,7 @@ def me(p: Principal = PatientDep, db: Session = Depends(get_db)):
     pat = _patient(p, db)
     est = db.get(m.Establishment, p.establishment_id)
     consented = compliance.has_consent(db, pat.id)
+    preferences = db.get(m.FacilityPreferences,p.establishment_id)
     journeys = db.scalars(select(m.PatientJourney).where(
         m.PatientJourney.patient_id == pat.id, m.PatientJourney.establishment_id == p.establishment_id)).all()
     out = []
@@ -90,9 +91,10 @@ def me(p: Principal = PatientDep, db: Session = Depends(get_db)):
             "journey_id": str(j.id), "surgery_date": j.surgery_date.isoformat(), "procedure": j.procedure,
             "admission_time": j.admission_time, "progress": {"done": done, "total": len(visible)},
             "tasks": [{"id": str(t.id), "title": t.title, "kind": t.kind, "due_date": t.due_date.isoformat(),
-                       "status": t.status, "can_submit": t.kind in ("document", "questionnaire")} for t in visible],
+                       "reason": t.detail if t.status == "todo" else "", "status": t.status, "can_submit": t.kind in ("document", "questionnaire")} for t in visible],
             "messages": [{"subject": x.payload.get("subject"), "body": x.payload.get("body")} for x in msgs]})
     return {"first_name": pat.first_name, "language": pat.language, "establishment": est.name if est else "",
+            "contacts": {"phone":preferences.support_phone if preferences else "", "email":preferences.support_email if preferences else ""},
             "consent_required": not consented, "notice": compliance.notice(est), "journeys": out if consented else []}
 
 

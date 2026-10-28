@@ -12,7 +12,7 @@ export function LiveUpdates() {
     const current = live.data?.revision;
     if (!current) return;
     if (prev.current && prev.current !== current) {
-      ["cockpit", "journeys", "journey", "me-portal", "tasks", "messages", "proposals", "support", "blockers", "reading", "demo-detail"].forEach(k => qc.invalidateQueries({queryKey:[k]}));
+      ["cockpit", "journeys", "journey", "me-portal", "tasks", "messages", "proposals", "support", "blockers", "reading", "demo-detail", "operations-worklist", "operations-case", "operations-messages", "operations-metrics", "portal-operations"].forEach(k => qc.invalidateQueries({queryKey:[k]}));
     }
     prev.current = current;
   }, [live.data?.revision, qc]);

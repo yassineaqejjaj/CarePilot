@@ -24,9 +24,10 @@ export type JourneyDetail = {
 export type Proposal = { id: string; agent: string; kind: string; payload: Record<string, any>; status: string };
 export type Notice = { version: string; controller: string; city: string; rights_contact: string; cndp_ref: string; transfer_ref: string; retention_days: number };
 export type Portal = {
+  contacts?: {phone:string;email:string};
   first_name: string; language: "fr" | "ar"; establishment: string; consent_required: boolean; notice: Notice;
   journeys: { journey_id: string; surgery_date: string; procedure: string; admission_time: string; progress: { done: number; total: number };
-    tasks: { id: string; title: string; kind: string; due_date: string; status: "todo" | "submitted" | "done"; can_submit: boolean }[];
+    tasks: { id: string; title: string; kind: string; due_date: string; status: "todo" | "submitted" | "done"; reason?: string; can_submit: boolean }[];
     messages: { subject: string; body: string }[] }[];
 };
 export type Me = { establishment: string; roles: string[]; ai_enabled: boolean; ai_blocked_reason: string; cndp_ref: string };

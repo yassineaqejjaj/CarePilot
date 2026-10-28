@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { ApiError, api } from "@/lib/api";
@@ -17,6 +17,15 @@ export default function NewJourney({ onClose, initialTemplateId }: { onClose: ()
   const toast = useToast();
   const [tab, setTab] = useState<"manual" | "csv">("manual");
   const [f, setF] = useState({...EMPTY, template_id: initialTemplateId ?? ""});
+  const draftRev=useRef(0), loaded=useRef(false), done=useRef(false), lastSaveOk=useRef(true), chain=useRef(Promise.resolve());
+  const [draftStatus,setDraftStatus]=useState("Chargement du brouillon…"),[reuse,setReuse]=useState("");
+  const draft=useQuery({queryKey:["journey-draft"],queryFn:()=>api<{revision:number;payload:typeof EMPTY|null}>("/operations/drafts/new-journey")});
+  useEffect(()=>{if(draft.data&&!loaded.current){loaded.current=true;draftRev.current=draft.data.revision;if(draft.data.payload)setF({...EMPTY,...draft.data.payload,informed:false,template_id:initialTemplateId??draft.data.payload.template_id});setDraftStatus(draft.data.payload?"Brouillon repris. Vérifiez les informations avant de confirmer.":"Les modifications sont enregistrées automatiquement.");}},[draft.data]);
+  function saveDraft(value:typeof EMPTY){chain.current=chain.current.then(async()=>{if(done.current)return;setDraftStatus("Enregistrement…");try{const r=await api<{revision:number}>("/operations/drafts/new-journey",{method:"PUT",body:JSON.stringify({revision:draftRev.current,payload:{...value,informed:false}})});draftRev.current=r.revision;qc.setQueryData(["journey-draft"],{revision:r.revision,payload:{...value,informed:false}});lastSaveOk.current=true;setDraftStatus("Brouillon chiffré enregistré.");}catch{lastSaveOk.current=false;setDraftStatus("Brouillon non enregistré : gardez cet écran ouvert et vérifiez votre connexion.");}});return chain.current;}
+  async function close(){await saveDraft(f);if(lastSaveOk.current)onClose();}
+  useEffect(()=>{if(!loaded.current||done.current)return;const timer=setTimeout(()=>saveDraft(f),900);return()=>clearTimeout(timer)},[f]);
+  useEffect(()=>setReuse(""),[f.first_name,f.last_name,f.birth_date]);
+  const duplicates=useQuery({queryKey:["patient-duplicates",f.first_name,f.last_name,f.birth_date],queryFn:()=>api<{items:{id:string;first_name:string;last_name:string;ref:string}[]}>("/operations/duplicates",{method:"POST",body:JSON.stringify({first_name:f.first_name,last_name:f.last_name,birth_date:f.birth_date})}),enabled:f.first_name.length>1&&f.last_name.length>1});
   const templates = useQuery({queryKey:["templates"],queryFn:()=>api<{id:string;name:string;status:string;catalogue?:{anchor_label:string;anchor:string}|null}[]>("/templates")});
   const published = templates.data?.filter(t=>t.status === "published") ?? [];
   const chosen = published.find(t=>t.id===f.template_id);
@@ -34,9 +43,9 @@ export default function NewJourney({ onClose, initialTemplateId }: { onClose: ()
 
   const create = useMutation({
     mutationFn: () => api<{ id: string; reference: string }>("/journeys", { method: "POST", body: JSON.stringify({
-      patient: { first_name: f.first_name, last_name: f.last_name, birth_date: f.birth_date, phone: f.phone, email: f.email, language: f.language, preferred_channel: f.preferred_channel, informed: f.informed },
+      ...(reuse?{patient_id:reuse}:{patient: { first_name: f.first_name, last_name: f.last_name, birth_date: f.birth_date, phone: f.phone, email: f.email, language: f.language, preferred_channel: f.preferred_channel, informed: f.informed }}),
       template_id: f.template_id || undefined, surgery_date: toIso(f.surgery_date), procedure: f.procedure, surgeon: f.surgeon, owner: f.owner, admission_time: f.admission_time }) }),
-    onSuccess: (r) => { refresh(); toast({ tone: "success", title: "Parcours créé", text: r.reference }); onClose(); nav(`/parcours/${r.id}`); },
+    onSuccess: async (r) => { done.current=true; await chain.current; await api("/operations/drafts/new-journey",{method:"DELETE"}); qc.removeQueries({queryKey:["journey-draft"]}); refresh(); toast({ tone: "success", title: "Parcours créé", text: r.reference }); onClose(); nav(`/parcours/${r.id}`); },
     onError: (e) => setErr(e instanceof ApiError ? e.detail : "Création impossible"),
   });
   const imp = useMutation({
@@ -48,15 +57,18 @@ export default function NewJourney({ onClose, initialTemplateId }: { onClose: ()
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4" role="dialog" aria-modal="true" aria-label="Nouveau parcours">
       <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-panel bg-white p-6 shadow-modal">
-        <div className="flex items-start justify-between"><h2 className="text-lg font-semibold">Nouveau parcours</h2><button aria-label="Fermer" onClick={onClose} className="text-ink-2">✕</button></div>
+        <div className="flex items-start justify-between"><h2 className="text-lg font-semibold">Nouveau parcours</h2><button aria-label="Fermer" onClick={()=>close()} className="text-ink-2">✕</button></div>
         <div className="mt-3 flex gap-2" role="tablist">
           {([["manual", "Saisie manuelle"], ["csv", "Import CSV"]] as const).map(([k, l]) => (
             <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setErr(""); }}
               className={cn("rounded-full border px-3 py-1 text-[13px] font-medium", tab === k ? "border-teal-700 bg-mint-100 text-teal-800" : "border-line-strong")}>{l}</button>))}
         </div>
 
+        {tab === "manual" && <p role="status" className="mt-3 text-meta text-ink-2">{draftStatus}</p>}
+        {duplicates.data?.items.length ? <div className="mt-3 rounded-card bg-warning-bg p-3"><p>Un dossier patient pourrait déjà exister. Vérifiez l’identité avant de réutiliser :</p>{duplicates.data.items.map(p=><label key={p.id} className="mt-2 flex gap-2"><input type="radio" name="reuse" checked={reuse===p.id} onChange={()=>setReuse(p.id)}/>{p.first_name} {p.last_name} · {p.ref}</label>)}<label className="mt-2 flex gap-2"><input type="radio" name="reuse" checked={!reuse} onChange={()=>setReuse("")}/>Créer une personne distincte après vérification</label></div> : null}
         {tab === "manual" ? (
           <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={(e) => { e.preventDefault(); setErr(""); create.mutate(); }}>
+            <fieldset className="contents" disabled={draft.isLoading}>
             <label className="md:col-span-2">Modèle de parcours<select required className={field} value={f.template_id} onChange={set("template_id")}><option value="">Choisir un modèle publié</option>{published.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label>
             {templates.isError && <p className="text-critical-text md:col-span-2">Impossible de charger les modèles.</p>}
             {templates.isSuccess && !published.length && <p className="text-warning-text md:col-span-2">Publiez un modèle dans le catalogue ou le concepteur avant de créer un dossier.</p>}
@@ -79,7 +91,8 @@ export default function NewJourney({ onClose, initialTemplateId }: { onClose: ()
             <label className="flex items-start gap-2 md:col-span-2"><input type="checkbox" className="mt-1" checked={f.informed} onChange={(e) => setF({ ...f, informed: e.target.checked })} />
               <span>Le patient a été informé du traitement de ses données (finalité, destinataires, droits d'accès, de rectification et d'opposition — loi 09-08, art. 5).</span></label>
             {err && <p role="alert" className="rounded-ctl bg-critical-bg p-3 text-critical-text md:col-span-2">{err}</p>}
-            <div className="flex justify-end gap-2 md:col-span-2"><Button type="button" variant="secondary" onClick={onClose}>Annuler</Button><Button disabled={!f.informed || !f.template_id || create.isPending}>{create.isPending ? "Création…" : "Créer le parcours"}</Button></div>
+            <div className="flex justify-end gap-2 md:col-span-2"><Button type="button" variant="secondary" onClick={()=>close()}>Annuler</Button><Button disabled={!f.informed || !f.template_id || create.isPending}>{create.isPending ? "Création…" : "Créer le parcours"}</Button></div>
+            </fieldset>
           </form>
         ) : (
           <div className="mt-4 space-y-3">

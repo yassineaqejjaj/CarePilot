@@ -37,6 +37,9 @@ def revision(p: Principal = Depends(current_principal), db: Session = Depends(ge
     for j in db.scalars(q).all():
         files = db.scalars(select(m.Document.id).where(m.Document.journey_id == j.id)).all()
         state.append([str(j.id), x.fingerprint(j), sorted(str(f) for f in files)])
+    jids=[j.id for j in db.scalars(q)]
+    for model,fields in [(m.AdministrativeCase,['journey_id','revision']),(m.InsuranceCase,['id','revision']),(m.Dispatch,['id','status']),(m.AdministrativeEvent,['id','kind']),(m.FinanceEntry,['id','kind'])]:
+        state.extend([[str(getattr(r,f)) for f in fields] for r in db.scalars(select(model).where(model.journey_id.in_(jids)))])
     if "patient" not in p.roles:
         logs = db.scalars(select(m.AuditLog).where(m.AuditLog.establishment_id == p.establishment_id).order_by(m.AuditLog.at.desc()).limit(1)).all()
         state.extend([str(a.id) for a in logs])

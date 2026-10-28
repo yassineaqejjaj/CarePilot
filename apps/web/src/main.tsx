@@ -13,7 +13,7 @@ if (publicPage) {
   import("@/pages/Landing").then(({ default: Landing }) =>
     createRoot(document.getElementById("root")!).render(<React.StrictMode><Landing /></React.StrictMode>));
 } else {
-  const patientMode = window.location.pathname.startsWith("/p/") || !!patientSession();
+  const patientMode = (window.location.pathname.startsWith("/p/") || window.location.pathname.startsWith("/accompagner/")) || !!patientSession();
   (patientMode ? Promise.resolve(true) : initAuth()).then(async () => {
     const { default: App } = await import("@/App");
     createRoot(document.getElementById("root")!).render(

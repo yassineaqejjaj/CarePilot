@@ -71,6 +71,35 @@ M3aya Santé (formerly CarePilot) gives clinic teams one place to coordinate nin
 
 ![Operations dashboard](docs/screenshots/01-cockpit.png)
 
+## Administrative operations — release 0.5
+
+**[Open the preparation center](https://carepilot-maroc.vercel.app/operations)**
+
+The new center turns a dossier into an actionable workflow: who should act next, what is missing and which deadline to follow. It covers preparation, human handoffs and exception handling without making a medical decision.
+
+| Capability | Available behavior | Explicit boundary |
+|---|---|---|
+| Preparation center | Queue of received documents, help requests, replies, contact corrections and coverage requests | Administrative priorities only; urgent care is never gated by paperwork |
+| Insurance tracking | Prepare, transmit-status tracking, request complements and record a verified decision, with revision conflicts detected | No insurer API submission, medical justification or generated approval |
+| Team coordination | Existing-account roster, service/role, availability, active backups, reassignment and access suspension | Account/password provisioning stays in Keycloak; app permissions cannot exceed identity grants |
+| Financial administration | Verified quotes, coverage, external deposits/refunds and estimated balance in MAD; immutable correction entries | No card processing, tax-invoice engine or guarantee of reimbursement |
+| Patient preadmission | Photo/file preview, received/reviewed/replacement states, help and replies, contact review and reminder opt-out | Staff validates documents and requested contact corrections |
+| Companion access | Patient-authorized 72 h access with separate link/code, attempt limit and immediate revocation | No patient-rights export, contact/consent changes, financial detail or delegation chaining |
+| Drafts and duplicates | Encrypted per-author drafts, resume/save-conflict handling, scoped possible-duplicate suggestions and explicit identity reuse | No automatic record merging or sharing of patient sessions |
+| Pilot measurement | Baseline/pilot observations by activity, sample sizes, observed averages and authorized-site comparison | No invented time savings or causal ROI claim |
+| Interoperability | CSV preview/import/export; revocable server-side connection keys and idempotent admission/status API | Vendor-specific connectors need a verified contract and sandbox |
+| Brevo transport | Server-side email/SMS and approved-template WhatsApp adapter, authenticated delivery callback, human approval and manual fallback | Public demo remains simulated; keys, senders and templates are not configured here |
+
+![Preparation center](docs/screenshots/25-preparation-center.png)
+
+![Administrative dossier](docs/screenshots/26-administrative-case.png)
+
+**External setup:** the public deployment still sends no real messages and uses fictional patients. Configure the owner's Brevo account before transport tests; never put provider keys in frontend variables. See [Brevo configuration and limits](docs/brevo.md). Patient replies work through the portal; external inbound email/SMS threading and WhatsApp delivery mapping are not presented as validated.
+
+The network screen shows only establishments explicitly authorized by verified identity claims. It does not fabricate a clinic group or allow an administrator to grant themselves another clinic's data. The rollout checklist collects admissions contacts and communication hours; completing it is not regulatory approval for real patient data.
+
+See [administrative workflows, security and retention](docs/administrative-operations.md) and [Moroccan HIS discovery and API contract](docs/integrations-morocco.md). MASAHA, MagicaHIS, Mibtech and FireHIS are research candidates based on vendor-published sources, with no partnership or certified compatibility claimed.
+
 ## A familiar, bilingual sign-in experience
 
 The Keycloak login page now follows the M3aya Santé design system: a compact supplied logo, navy/teal palette, Manrope and IBM Plex Sans Arabic, French/Arabic switching and RTL layout. Desktop pairs a journey illustration with the form; mobile prioritizes sign-in. Password-manager autocomplete, password visibility, native errors, keyboard navigation and the existing OIDC/PKCE flow are retained. The landing page carries the selected language through to sign-in.
@@ -184,7 +213,7 @@ Administrators configure the clinic's CNDP references, rights contact and retent
 | Viewer | Read-only staff views |
 | Patient | Their own portal only |
 
-The patient portal is bilingual; the staff interface is currently French. **Team management** remains a placeholder page; the pathway catalogue is functional. User administration uses Keycloak.
+The patient portal is bilingual; the staff interface is currently French. Team/service management, availability and backups are functional. Identity/password provisioning remains in Keycloak; the app roster restricts existing accounts. The pathway catalogue is functional.
 
 ## Interactive product experience (v0.3)
 
@@ -362,7 +391,7 @@ export DATABASE_URL=postgresql+psycopg://carepilot:carepilot@localhost:5442/care
 
 The **3 new catalogue Playwright scenarios also passed against production**, covering the nine templates, a reusable maternity example, and explicit imaging template selection.
 
-Validation: **54 pytest tests passed** locally, including real pgvector retrieval; **10 original Playwright scenarios passed locally and against the live Vercel/Railway deployment** on 28 October 2026. They cover tenant isolation, patient consent, link lockout, encrypted files, invalid uploads, rights/erasure, retention, CSV simulation/import and human approval. The browser tests mutate synthetic data. `scripts/test-deployed.mjs` runs against the online demo using the owner's ignored credentials file; do not run it against a clinic environment.
+Validation: **69 pytest tests passed** locally, including real pgvector retrieval. **18 browser scenarios passed locally** for the historical application, public website and new administrative workflows; the authentication/catalogue regression suite also passed. **13 release checks passed against the live Vercel/Railway deployment**, including insurance/financial preparation, limited companion access and the bilingual website/sign-in. All runs use synthetic data only. They cover tenant isolation, patient consent, link lockout, encrypted files, invalid uploads, rights/erasure, retention, CSV simulation/import and human approval. The browser tests mutate synthetic data. `scripts/test-deployed.mjs` runs against the online demo using the owner's ignored credentials file; do not run it against a clinic environment.
 
 ### Deployment
 
@@ -389,7 +418,7 @@ The Moroccan focus does not establish a blanket exemption from GDPR or the EU AI
 - Obtain applicable CNDP approvals and validate transfers, hosting, processor contracts and Arabic legal copy.
 - Add malware scanning, backup/restore exercises, secret rotation, a security assessment and robust patient authentication.
 - Move Keycloak to persistent PostgreSQL; run scheduled jobs and monitoring; implement proper incremental migrations.
-- Complete team management, hospital-system integration, insurer connections and qualified signatures if required.
+- Validate vendor-specific HIS and insurer contracts in a sandbox; generic administrative exchange is available. Identity account provisioning remains in Keycloak. Payment processing and qualified signatures are separate integrations.
 - Activate and verify messaging with approved senders/templates; evaluate AI on synthetic cases before enabling it.
 - Improve concurrent delivery/idempotency and retention coverage across derived records and backups.
 

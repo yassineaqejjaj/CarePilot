@@ -9,7 +9,7 @@ from functools import lru_cache
 from typing import Iterator
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import create_engine
@@ -43,6 +43,14 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
     smtp_from: str = ""
+    brevo_api_key: str = ""
+    brevo_sender_email: str = ""
+    brevo_sender_name: str = "M3aya Santé"
+    brevo_sms_sender: str = "M3aya"
+    brevo_whatsapp_sender: str = ""
+    brevo_whatsapp_template_fr: int = 0
+    brevo_whatsapp_template_ar: int = 0
+    messaging_webhook_secret: str = ""
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
     twilio_sms_from: str = ""
@@ -105,6 +113,8 @@ class Principal:
     email: str = ""
     patient_id: uuid.UUID | None = None  # renseigné uniquement pour le rôle patient
     name: str = ""
+    authorized_establishments: tuple[uuid.UUID, ...] = ()
+    delegate_id: uuid.UUID | None = None
 
 
 @lru_cache
@@ -132,7 +142,7 @@ def _decode(token: str, s: Settings) -> dict:
     return jwt.decode(token, key, algorithms=["RS256"], audience=s.oidc_audience, issuer=s.oidc_issuer)
 
 
-def current_principal(cred: HTTPAuthorizationCredentials | None = Depends(_bearer)) -> Principal:
+def current_principal(request: Request, cred: HTTPAuthorizationCredentials | None = Depends(_bearer), db: Session = Depends(get_db)) -> Principal:
     if cred is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Authentification requise")
     try:
@@ -142,7 +152,35 @@ def current_principal(cred: HTTPAuthorizationCredentials | None = Depends(_beare
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Jeton invalide")
     roles = frozenset(claims.get("realm_access", {}).get("roles", [])) & ROLES
     pid = uuid.UUID(claims["patient_id"]) if claims.get("patient_id") else None
-    return Principal(claims["sub"], est, roles, claims.get("email", ""), pid, claims.get("name", ""))
+    from app import models as m
+    from sqlalchemy import select
+    allowed = {est}
+    if "patient" not in roles:
+        for value in claims.get("establishment_ids", []):
+            try: allowed.add(uuid.UUID(value))
+            except (ValueError, TypeError): pass
+        selected = request.headers.get("X-Establishment-ID")
+        if selected:
+            try: chosen = uuid.UUID(selected)
+            except ValueError: raise HTTPException(403, "Établissement non autorisé")
+            if chosen not in allowed: raise HTTPException(403, "Établissement non autorisé")
+            est = chosen
+        member = db.scalar(select(m.TeamMember).where(m.TeamMember.establishment_id==est,m.TeamMember.subject==claims["sub"]))
+        if member:
+            if not member.active: raise HTTPException(403, "Accès à l’établissement suspendu")
+            ceilings={"admin":{"admin","coordinator","designer","viewer"},"coordinator":{"coordinator","viewer"},"designer":{"designer","viewer"},"viewer":{"viewer"}}
+            permitted=set().union(*(ceilings.get(r,set()) for r in roles))
+            roles=frozenset({member.role}) if member.role in permitted else frozenset()
+    delegate_id = uuid.UUID(claims["delegate_id"]) if claims.get("delegate_id") else None
+    if delegate_id:
+        grant=db.get(m.CompanionGrant,delegate_id)
+        now=dt.datetime.now(dt.timezone.utc)
+        if not grant or grant.revoked or grant.patient_id!=pid or grant.establishment_id!=est or grant.expires_at.replace(tzinfo=dt.timezone.utc)<now:
+            raise HTTPException(401,"Accès accompagnant expiré ou révoqué")
+        path=request.url.path
+        permitted=(request.method=="GET" and path in ("/api/portal/me","/api/operations/portal/overview","/api/live/revision")) or (request.method=="POST" and ((path.startswith("/api/portal/tasks/") and path.endswith(("/upload","/submit"))) or path in ("/api/operations/portal/messages","/api/operations/portal/support")))
+        if not permitted: raise HTTPException(403,"Action réservée au patient")
+    return Principal(claims["sub"], est, roles, claims.get("email", ""), pid, claims.get("name", ""),tuple(sorted(allowed,key=str)),delegate_id)
 
 
 def require_roles(*allowed: str):

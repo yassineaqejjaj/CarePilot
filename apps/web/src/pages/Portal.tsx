@@ -2,10 +2,12 @@ import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, Check, ClipboardList, Home, ListChecks, Mail, MessageSquare, Phone, Route as RouteIcon, ShieldCheck } from "lucide-react";
 import { ApiError, api, download } from "@/lib/api";
-import { displayName, logout } from "@/auth";
+import { displayName, logout, patientSession } from "@/auth";
 import type { Portal } from "@/lib/types";
 import { Avatar, Button, ErrorState, Logo, Pill, Progress, Skeleton, useToast } from "@/components/ui";
 import { useLang, taskTitle, type Lang } from "@/i18n";
+import DocumentPreview from "@/components/DocumentPreview";
+import PortalAdministration from "@/components/PortalAdministration";
 import PatientAssistant from "@/components/PatientAssistant";
 import { LiveUpdates, LiveBadge } from "@/lib/live";
 import { cn } from "@/lib/utils";
@@ -17,9 +19,11 @@ const dm = (iso: string, l: Lang) => new Date(iso + "T12:00:00").toLocaleDateStr
 
 export default function PortalPage() {
   const qc = useQueryClient();
+  const delegated=!!patientSession()?.delegated;
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const pendingTask = useRef<string>("");
+  const [preview,setPreview]=useState<{id:string;file:File}|null>(null);
   const [tab, setTab] = useState<Tab>("home");
   const { data, error, refetch } = useQuery({ queryKey: ["me-portal"], queryFn: () => api<Portal>("/portal/me") });
   const [lang, setLang, t] = useLang(data?.language);
@@ -42,7 +46,7 @@ export default function PortalPage() {
     onSuccess: () => { setNote(""); toast({ tone: "success", title: t("rights.sent") }); }, onError: fail,
   });
 
-  if (error) return <div className="p-4"><ErrorState onRetry={refetch} /></div>;
+  if (error) return <main className="mx-auto max-w-[430px] space-y-4 p-6"><Logo size={44}/>{error instanceof ApiError&&[401,410].includes(error.status)?<><h1 className="text-xl font-semibold">{lang==='ar'?'هذا الوصول لم يعد متاحاً.':'Cet accès n’est plus disponible.'}</h1><p className="text-ink-2">{lang==='ar'?'قد يكون الرابط أو الوصول منتهياً أو ملغى. اطلبوا رابطاً جديداً من المؤسسة أو المريض.':'Le lien ou l’accès a expiré ou a été révoqué. Demandez un nouveau lien à votre établissement ou au patient.'}</p></>:<ErrorState onRetry={refetch}/>}<Button size="patient" variant="secondary" onClick={()=>{sessionStorage.removeItem("cp_patient_session");location.href="/"}}>{lang==='ar'?'العودة إلى الموقع':'Retour au site'}</Button></main>;
   if (!data) return <div className="space-y-3 p-4"><Skeleton className="h-16" /><Skeleton className="h-40" /><Skeleton className="h-64" /></div>;
 
   const header = (
@@ -88,6 +92,7 @@ export default function PortalPage() {
           <li key={x.id} className="flex items-center gap-3 border-b border-line p-4 last:border-0">
             <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full", x.status === "done" ? "bg-success-bg text-success-text" : "bg-surface-2 text-ink-2")}>{x.status === "done" ? <Check size={15} /> : <ClipboardList size={15} />}</span>
             <div className="flex-1"><p className="font-semibold text-navy-900">{taskTitle(lang, x.title)}</p>
+              {x.reason && <p className="mt-1 text-sm text-warning-text">{x.reason}</p>}
               <p className="text-meta text-ink-2">{x.status === "done" ? t("tasks.validated") : x.can_submit ? t("tasks.before", { date: dm(x.due_date, lang) }) : t("tasks.available", { date: dm(x.due_date, lang) })}</p></div>
             <Pill tone={x.status === "done" ? "success" : x.status === "submitted" ? "info" : x.can_submit ? "warning" : "neutral"}>{x.can_submit || x.status !== "todo" ? label[x.status] : t("status.soon")}</Pill>
           </li>))}
@@ -98,8 +103,9 @@ export default function PortalPage() {
     <div className="mx-auto flex min-h-screen max-w-[430px] flex-col bg-page">
       {header}
       <LiveUpdates />
+      {preview&&<DocumentPreview file={preview.file} lang={lang} onCancel={()=>setPreview(null)} onConfirm={file=>{upload.mutate({id:preview.id,file});setPreview(null)}}/>}
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,application/pdf" capture="environment" className="hidden" aria-label="Fichier"
-        onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; const id = pendingTask.current || todo?.id; if (f && id) upload.mutate({ id, file: f }); }} />
+        onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; const id = pendingTask.current || todo?.id; if (f && id) {if(!["image/jpeg","image/png","image/heic","image/heif","application/pdf"].includes(f.type)){toast({tone:"critical",title:t("err.type")});return;}setPreview({ id, file: f });} }} />
       <main className="flex-1 space-y-5 px-4 pb-24 pt-5 text-patient">
         <h1 className="text-[22px] font-semibold leading-snug">{t("greeting", { name: data.first_name })}</h1>
         <LiveBadge />
@@ -123,6 +129,7 @@ export default function PortalPage() {
               <p className="text-ink-2">{j.procedure}</p>
             </section>)}
           {(tab === "home" || tab === "tasks") && <Tasks />}
+          {(tab === "home" || tab === "messages" || tab === "rights") && <PortalAdministration journeyId={j.journey_id} lang={lang} />}
           {(tab === "home" || tab === "journey") && (
             <section aria-label={t("dates.title")}><h2 className="mb-2 text-lg font-semibold">{t("dates.title")}</h2>
               {[[-1, t("dates.practical")], [0, t("dates.admission", { time: j.admission_time })]].map(([off, text]) => {
@@ -131,7 +138,7 @@ export default function PortalPage() {
                   <div className="w-12 shrink-0 rounded-ctl bg-mint-100 py-1 text-center text-teal-800"><p className="text-[10px] font-semibold uppercase">{d.toLocaleDateString(locale(lang), { month: "short" })}</p><p className="text-lg font-bold tabular-nums">{d.getDate()}</p></div>
                   <p className="flex-1 self-center">{text as string}</p></div>);
               })}</section>)}
-          {tab === "messages" && <PatientAssistant arabic={lang === "ar"} />}
+          {tab === "messages" && !delegated && <PatientAssistant arabic={lang === "ar"} />}
           {tab === "messages" && (
             <section aria-label={t("messages.title")}><h2 className="mb-2 text-lg font-semibold">{t("messages.title")}</h2>
               {j.messages.length === 0 ? <p className="rounded-panel border border-line bg-white p-4 text-ink-2">{t("messages.none")}</p> :
@@ -151,13 +158,13 @@ export default function PortalPage() {
           {tab === "home" && (
             <section className="rounded-panel border border-line bg-white p-5"><h2 className="font-semibold text-navy-900">{t("help.title")}</h2>
               <p className="mt-1 text-ink-2">{t("help.hours")}</p>
-              <div className="mt-3 grid grid-cols-2 gap-2"><Button variant="secondary" size="sm" onClick={() => toast({ tone: "warning", title: t("help.demo") })}><Phone size={14} />{t("help.call")}</Button>
-                <Button variant="secondary" size="sm" onClick={() => toast({ tone: "warning", title: t("help.demo") })}><Mail size={14} />{t("help.write")}</Button></div></section>)}
+              <div className="mt-3 grid grid-cols-2 gap-2"><Button variant="secondary" size="sm" disabled={!data.contacts?.phone} onClick={() => { if(data.contacts?.phone)location.href="tel:"+data.contacts.phone; }}><Phone size={14} />{t("help.call")}</Button>
+                <Button variant="secondary" size="sm" onClick={() => {setTab("messages");setTimeout(()=>{const help=document.getElementById("portal-help");help?.setAttribute("open","");help?.scrollIntoView({block:"center"});},0)}}><Mail size={14} />{t("help.write")}</Button></div></section>)}
           <p className="rounded-card bg-surface-2 p-3 text-meta text-ink-2">{t("disclaimer")}</p>
         </>)}
       </main>
-      <nav aria-label="Navigation" className="fixed bottom-0 left-1/2 grid w-full max-w-[430px] -translate-x-1/2 grid-cols-5 border-t border-line bg-white pb-2 pt-1">
-        {([["home", "tab.home", Home], ["tasks", "tab.tasks", ListChecks], ["journey", "tab.journey", RouteIcon], ["messages", "tab.messages", MessageSquare], ["rights", "tab.rights", ShieldCheck]] as const).map(([k, l, I]) => (
+      <nav aria-label="Navigation" className={cn("fixed bottom-0 left-1/2 grid w-full max-w-[430px] -translate-x-1/2 border-t border-line bg-white pb-2 pt-1",delegated?"grid-cols-4":"grid-cols-5")}>
+        {([["home", "tab.home", Home], ["tasks", "tab.tasks", ListChecks], ["journey", "tab.journey", RouteIcon], ["messages", "tab.messages", MessageSquare], ["rights", "tab.rights", ShieldCheck]] as const).filter(([k])=>!delegated||k!=="rights").map(([k, l, I]) => (
           <button key={k} onClick={() => setTab(k)} aria-current={tab === k} className={cn("flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium", tab === k ? "text-teal-700" : "text-ink-2")}><I size={20} />{t(l)}</button>))}
       </nav>
     </div>

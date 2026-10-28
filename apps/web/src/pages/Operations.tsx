@@ -1,0 +1,1620 @@
+import { useState, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  ArrowUpRight,
+  Check,
+  Clock3,
+  FileCheck2,
+  Plug,
+  ShieldCheck,
+  Users,
+  X,
+} from "lucide-react";
+import { api, ApiError } from "@/lib/api";
+import { roles } from "@/auth";
+import {
+  Button,
+  Card,
+  ErrorState,
+  Pill,
+  Skeleton,
+  useToast,
+} from "@/components/ui";
+const input =
+  "mt-1 block w-full rounded-ctl border border-line-strong bg-white p-2 text-sm";
+const money = (n: number) =>
+  new Intl.NumberFormat("fr-MA", { style: "currency", currency: "MAD" }).format(
+    n / 100,
+  );
+const states: Record<string, string> = {
+  preparing: "En préparation",
+  ready: "Complet administrativement",
+  arrived: "Accueil effectué",
+  closed: "Clôturé",
+  draft: "À préparer",
+  submitted: "Transmis",
+  more_info: "Complément demandé",
+  approved: "Accord reçu",
+  rejected: "Refus reçu",
+  simulated: "Simulation",
+  sent: "Accepté par le fournisseur",
+  delivered: "Livré",
+  failed: "Échec",
+  sending: "En cours / à vérifier",
+  manual: "Contact manuel déclaré",
+  inbound: "Réponse du patient",
+  inbound_read: "Réponse traitée par l’équipe",
+};
+const activityLabels: Record<string, string> = {
+  document_check: "Vérification de document",
+  admission: "Admission administrative",
+  insurance: "Suivi assurance",
+  reminder: "Relance",
+  phone_call: "Appel téléphonique",
+};
+const entryLabels: Record<string, string> = {
+  quote: "Devis",
+  coverage: "Couverture",
+  deposit: "Acompte",
+  refund: "Remboursement",
+  void: "Annulation",
+};
+const eventLabels: Record<string, string> = {
+  note: "Note interne",
+  handoff: "Transmission du dossier",
+  insurance: "Suivi de prise en charge",
+  finance: "Suivi financier",
+  message: "Communication",
+  manual_contact: "Contact manuel",
+  patient_message: "Réponse du patient",
+  profile_requested: "Coordonnées à vérifier",
+  profile_confirmed: "Coordonnées confirmées",
+  profile_validated: "Vérification des coordonnées",
+  reschedule: "Date déplacée",
+  reply_read: "Réponse traitée",
+};
+const detailLabels: Record<string, string> = {
+  department: "Service",
+  owner: "Responsable",
+  phase: "Étape administrative",
+  exception: "Situation particulière",
+  status: "État",
+  kind: "Type",
+  amount_cents: "Montant (centimes MAD)",
+  id: "Référence",
+  void: "Écriture annulée",
+  from: "Date précédente",
+  to: "Nouvelle date",
+  reason: "Motif",
+  phone: "Téléphone",
+  email: "E-mail",
+  language: "Langue",
+  preferred_channel: "Canal souhaité",
+  request: "Demande",
+  message: "Message",
+};
+const describe = (v: unknown): string =>
+  typeof v === "string"
+    ? v
+    : v && typeof v === "object"
+      ? Object.entries(v)
+          .map(
+            ([k, x]) =>
+              (detailLabels[k] ?? k) +
+              " : " +
+              ((states[String(x)] ?? entryLabels[String(x)] ?? String(x)) ||
+                "—"),
+          )
+          .join("\n")
+      : String(v ?? "");
+type Row = {
+  id: string;
+  reference: string;
+  patient: string;
+  date: string;
+  owner: string;
+  department: string;
+  phase: string;
+  exception: string;
+  next_action: string;
+  due_date: string | null;
+  submitted: number;
+  missing: number;
+  insurance_pending: number;
+  assigned_subject: string;
+  owner_available: boolean;
+  status: string;
+  help_pending: number;
+  profile_pending: number;
+  unread: number;
+};
+type Member = {
+  id: string | null;
+  subject: string;
+  display_name: string;
+  role: string;
+  department: string;
+  active: boolean;
+  available: boolean;
+  backup_subject: string;
+};
+type Ledger = {
+  quote: number;
+  coverage: number;
+  deposit: number;
+  refund: number;
+  estimated_patient_share: number;
+  balance: number;
+  notice: string;
+  entries: {
+    id: string;
+    kind: string;
+    amount_cents: number;
+    reference: string;
+    voided: boolean;
+  }[];
+};
+type Dossier = {
+  id: string;
+  reference: string;
+  revision: number;
+  assigned_subject: string;
+  department: string;
+  phase: string;
+  exception: string;
+  finance: Ledger;
+  insurance: {
+    id: string;
+    insurer: string;
+    reference: string;
+    status: string;
+    revision: number;
+    note: string;
+    due_date: string | null;
+  }[];
+  events: { id: string; kind: string; text: unknown; created_at: string }[];
+  support: { id: string; status: string; message: string }[];
+  preparation: { missing: number; submitted: number };
+  patient: { name: string; phone: string; email: string };
+};
+type Metrics = {
+  active: number;
+  ready: number;
+  ready_pct: number;
+  reminders: number;
+  messages: Record<string, number>;
+  insurance_response_hours: number | null;
+  insurance_sample: number;
+  adoption: number;
+  observations: {
+    activity: string;
+    baseline_n: number;
+    pilot_n: number;
+    baseline_seconds: number | null;
+    pilot_seconds: number | null;
+    observed_difference_seconds: number | null;
+  }[];
+  definition: string;
+};
+const fd = (f: HTMLFormElement) => Object.fromEntries(new FormData(f));
+export default function Operations() {
+  const qc = useQueryClient(),
+    toast = useToast();
+  const [params, setParams] = useSearchParams();
+  const selected = params.get("dossier");
+  const [tab, setTab] = useState(
+      params.get("onglet") === "equipe"
+        ? "Équipe"
+        : params.get("onglet") === "reseau"
+          ? "Réseau"
+          : params.get("onglet") === "mesures"
+            ? "Mesures"
+            : "Dossiers",
+    ),
+    [search, setSearch] = useState(""),
+    [mine, setMine] = useState(false),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(""),
+    [secret, setSecret] = useState("");
+  useEffect(() => {
+    if (!selected) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const root = document.querySelector<HTMLElement>(
+      '[role="dialog"][aria-label="Dossier administratif"]',
+    );
+    root?.querySelector<HTMLElement>("button")?.focus();
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setParams({});
+        return;
+      }
+      if (e.key === "Tab" && root) {
+        const elements = Array.from(
+          root.querySelectorAll<HTMLElement>(
+            "button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled])",
+          ),
+        );
+        const first = elements[0],
+          last = elements[elements.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => {
+      document.removeEventListener("keydown", handler);
+      previous?.focus();
+    };
+  }, [selected]);
+  const admin = roles().includes("admin"),
+    write = admin || roles().includes("coordinator");
+  const q = useQuery({
+    queryKey: ["operations-worklist"],
+    queryFn: () =>
+      api<{ items: Row[]; scope: string; messaging_provider: string }>(
+        "/operations/worklist",
+      ),
+  });
+  const team = useQuery({
+    queryKey: ["operations-team"],
+    queryFn: () => api<{ items: Member[]; notice: string }>("/operations/team"),
+  });
+  const detail = useQuery({
+    queryKey: ["operations-case", selected],
+    queryFn: () => api<Dossier>("/operations/cases/" + selected),
+    enabled: !!selected,
+  });
+  const messages = useQuery({
+    queryKey: ["operations-messages", selected],
+    queryFn: () =>
+      api<{ items: { id: string; status: string; body: string }[] }>(
+        "/operations/cases/" + selected + "/messages",
+      ),
+    enabled: !!selected,
+  });
+  const metrics = useQuery({
+    queryKey: ["operations-metrics"],
+    queryFn: () => api<Metrics>("/operations/metrics"),
+    enabled: tab === "Mesures",
+  });
+  const connections = useQuery({
+    queryKey: ["operations-connections"],
+    queryFn: () =>
+      api<{ items: { id: string; name: string; active: boolean }[] }>(
+        "/operations/connections",
+      ),
+    enabled: admin && tab === "Intégrations",
+  });
+  const setup = useQuery({
+    queryKey: ["operations-setup"],
+    queryFn: () =>
+      api<{
+        preferences: {
+          support_phone: string;
+          support_email: string;
+          contact_start_hour: number;
+          contact_end_hour: number;
+        };
+        checklist: { label: string; done: boolean }[];
+        notice: string;
+      }>("/operations/setup"),
+    enabled: tab === "Démarrage",
+  });
+  const sites = useQuery({
+    queryKey: ["operations-sites"],
+    queryFn: () =>
+      api<{
+        current: string;
+        items: { id: string; name: string; metrics: Metrics }[];
+        notice: string;
+      }>("/operations/sites"),
+    enabled: tab === "Réseau",
+  });
+  async function perform(path: string, body: unknown = {}, method = "POST") {
+    setBusy(true);
+    setError("");
+    try {
+      const r = await api<Record<string, unknown>>(path, {
+        method,
+        body: method === "DELETE" ? undefined : JSON.stringify(body),
+      });
+      await qc.invalidateQueries({
+        predicate: (q) =>
+          ["operations", "cockpit", "journey", "tasks", "me"].some((k) =>
+            String(q.queryKey[0]).startsWith(k),
+          ),
+      });
+      toast({ tone: "success", title: "Modification enregistrée" });
+      return r;
+    } catch (e) {
+      setError(e instanceof ApiError ? e.detail : "Action impossible");
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+  const rows = (q.data?.items ?? []).filter(
+    (r) =>
+      (r.patient + " " + r.reference + " " + r.owner)
+        .toLowerCase()
+        .includes(search.toLowerCase()) &&
+      (!mine ||
+        r.submitted > 0 ||
+        r.insurance_pending > 0 ||
+        r.help_pending > 0 ||
+        r.profile_pending > 0 ||
+        r.unread > 0) &&
+      (tab !== "Assurances" || r.insurance_pending > 0),
+  );
+  const d = detail.data;
+  return (
+    <div className="space-y-5">
+      <div>
+        <Pill tone="mint">Coordination administrative</Pill>
+        <h1 className="mt-2 text-2xl font-semibold">
+          La prochaine action, au bon endroit.
+        </h1>
+        <p className="mt-2 text-ink-2">
+          Dossiers, assurances et équipes : un centre de préparation sans
+          décision médicale.
+        </p>
+      </div>
+      <div
+        className="flex flex-wrap gap-2"
+        role="tablist"
+        aria-label="Centre de préparation"
+      >
+        {[
+          "Dossiers",
+          "Assurances",
+          "Équipe",
+          "Démarrage",
+          "Mesures",
+          ...(admin ? ["Intégrations"] : []),
+          "Réseau",
+        ].map((t) => (
+          <button
+            key={t}
+            role="tab"
+            aria-selected={tab === t}
+            className={
+              "rounded-full border px-4 py-2 " +
+              (tab === t
+                ? "border-teal-700 bg-mint-100 text-teal-800"
+                : "border-line")
+            }
+            onClick={() => {
+              setTab(t);
+              setError("");
+              setParams({});
+            }}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+      {error && (
+        <p
+          role="alert"
+          className="rounded-card bg-critical-bg p-4 text-critical-text"
+        >
+          {error}
+        </p>
+      )}
+      {(tab === "Dossiers" || tab === "Assurances") && (
+        <>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              [
+                "Documents à vérifier",
+                q.data?.items.reduce((n, r) => n + r.submitted, 0),
+              ],
+              [
+                "Demandes assurance à suivre",
+                q.data?.items.reduce((n, r) => n + r.insurance_pending, 0),
+              ],
+              [
+                "Dossiers sans pièce bloquante",
+                q.data?.items.filter((r) => r.missing === 0).length,
+              ],
+            ].map(([l, v]) => (
+              <Card key={String(l)} className="p-4">
+                <p className="text-ink-2">{l}</p>
+                <p className="mt-2 text-3xl font-semibold">{v ?? "—"}</p>
+              </Card>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex-1">
+              Rechercher un dossier
+              <input
+                className={input}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Nom, référence, responsable"
+              />
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={mine}
+                onChange={(e) => setMine(e.target.checked)}
+              />
+              À traiter par l’équipe
+            </label>
+          </div>
+          {q.isError ? (
+            <ErrorState onRetry={q.refetch} />
+          ) : !q.data ? (
+            <Skeleton className="h-40" />
+          ) : (
+            <Card className="overflow-x-auto">
+              <table className="w-full min-w-[680px] text-left">
+                <thead className="bg-surface-2 text-meta text-ink-2">
+                  <tr>
+                    {[
+                      "Dossier",
+                      "Prochaine action",
+                      "Responsable",
+                      "Échéance",
+                      "",
+                    ].map((x) => (
+                      <th className="p-3" key={x}>
+                        {x}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.id} className="border-t border-line">
+                      <td className="p-3">
+                        <strong>{r.patient}</strong>
+                        <p className="text-meta text-ink-2">
+                          {r.reference} · {states[r.phase]}
+                        </p>
+                        {r.exception && (
+                          <Pill tone="warning">Situation à accompagner</Pill>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        <p>
+                          {r.next_action === "Création du parcours"
+                            ? r.missing
+                              ? "Recueillir les pièces administratives"
+                              : "Vérifier les tâches restantes"
+                            : r.next_action}
+                        </p>
+                        <p className="text-meta text-ink-2">
+                          {r.missing} pièce(s) bloquante(s) · {r.submitted}{" "}
+                          reçue(s)
+                        </p>
+                      </td>
+                      <td className="p-3">
+                        {r.owner || "À affecter"}
+                        <p className="text-meta text-ink-2">
+                          {r.department}
+                          {!r.owner_available ? " · absent, réaffecter" : ""}
+                        </p>
+                      </td>
+                      <td className="p-3">{r.due_date ?? "—"}</td>
+                      <td className="p-3">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setParams({ dossier: r.id })}
+                        >
+                          Ouvrir
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!rows.length && (
+                <p className="p-5 text-ink-2">
+                  Aucun dossier à afficher avec ces filtres.
+                </p>
+              )}
+            </Card>
+          )}
+          <p className="text-meta text-ink-2">{q.data?.scope}</p>
+        </>
+      )}
+      {tab === "Équipe" && (
+        <>
+          <Card className="p-5">
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <Users size={20} />
+              Équipes et remplacements
+            </h2>
+            <p className="mt-2 text-ink-2">{team.data?.notice}</p>
+            <div className="mt-4 space-y-3">
+              {team.data?.items.map((m) => (
+                <div
+                  className="flex flex-wrap items-center gap-3 rounded-card border border-line p-3"
+                  key={m.subject}
+                >
+                  <div className="flex-1">
+                    <strong>{m.display_name}</strong>
+                    <p className="text-meta text-ink-2">
+                      {m.department} · {m.role} ·{" "}
+                      {m.available ? "Disponible" : "Absent"} ·{" "}
+                      {m.active ? "Accès actif" : "Suspendu"}
+                    </p>
+                    {admin && (
+                      <details className="mt-1 text-meta text-ink-2">
+                        <summary>Référence du compte</summary>
+                        <code>{m.subject}</code>
+                      </details>
+                    )}
+                  </div>
+                  {admin && m.id && (
+                    <>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() =>
+                          perform(
+                            "/operations/team",
+                            { ...m, id: undefined, available: !m.available },
+                            "PUT",
+                          )
+                        }
+                      >
+                        {m.available
+                          ? "Déclarer absent"
+                          : "Déclarer disponible"}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() =>
+                          perform(
+                            "/operations/team",
+                            { ...m, id: undefined, active: !m.active },
+                            "PUT",
+                          )
+                        }
+                      >
+                        {m.active ? "Suspendre" : "Réactiver"}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+          {admin && (
+            <Card className="p-5">
+              <h3 className="font-semibold">
+                Rattacher un compte Keycloak existant
+              </h3>
+              <form
+                className="mt-4 grid gap-3 sm:grid-cols-2"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const f = e.currentTarget;
+                  const values = fd(f);
+                  await perform(
+                    "/operations/team",
+                    { ...values, active: true, available: true },
+                    "PUT",
+                  );
+                }}
+              >
+                <label>
+                  Référence du compte existant
+                  <input
+                    className={input}
+                    name="subject"
+                    required
+                    maxLength={100}
+                  />
+                </label>
+                <label>
+                  Nom affiché
+                  <input
+                    className={input}
+                    name="display_name"
+                    required
+                    maxLength={120}
+                  />
+                </label>
+                <label>
+                  Service
+                  <input
+                    className={input}
+                    name="department"
+                    defaultValue="Admissions"
+                    required
+                  />
+                </label>
+                <label>
+                  Rôle
+                  <select className={input} name="role">
+                    <option value="coordinator">Coordination</option>
+                    <option value="viewer">Consultation seule</option>
+                    <option value="designer">Concepteur</option>
+                    <option value="admin">Administration</option>
+                  </select>
+                </label>
+                <label>
+                  Remplaçant
+                  <select className={input} name="backup_subject">
+                    <option value="">Aucun</option>
+                    {team.data?.items
+                      .filter((x) => x.id && x.active)
+                      .map((x) => (
+                        <option key={x.subject} value={x.subject}>
+                          {x.display_name}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <div className="flex items-end">
+                  <Button disabled={busy}>Enregistrer le rattachement</Button>
+                </div>
+              </form>
+              <p className="mt-3 text-meta text-ink-2">
+                Le rôle ne peut pas dépasser les droits accordés dans Keycloak.
+                Aucun mot de passe n’est créé ou affiché ici.
+              </p>
+            </Card>
+          )}
+        </>
+      )}
+      {tab === "Démarrage" && (
+        <Card className="space-y-4 p-5">
+          <h2 className="text-lg font-semibold">Préparer le premier pilote</h2>
+          <p className="text-ink-2">{setup.data?.notice}</p>
+          <ul className="space-y-3">
+            {setup.data?.checklist.map((c) => (
+              <li className="flex items-center gap-3" key={c.label}>
+                <Pill tone={c.done ? "success" : "warning"}>
+                  {c.done ? "Prêt" : "À préparer"}
+                </Pill>
+                {c.label}
+              </li>
+            ))}
+          </ul>
+          {write && (
+            <Button
+              variant="secondary"
+              disabled={busy}
+              onClick={() => perform("/operations/team/register-self")}
+            >
+              Rattacher mon compte à l’équipe
+            </Button>
+          )}
+          {admin && setup.data && (
+            <form
+              className="grid gap-3 sm:grid-cols-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const b = fd(e.currentTarget);
+                perform(
+                  "/operations/setup",
+                  {
+                    ...b,
+                    contact_start_hour: Number(b.contact_start_hour),
+                    contact_end_hour: Number(b.contact_end_hour),
+                  },
+                  "PUT",
+                );
+              }}
+            >
+              <label>
+                Téléphone des admissions
+                <input
+                  className={input}
+                  name="support_phone"
+                  type="tel"
+                  defaultValue={setup.data.preferences.support_phone}
+                />
+              </label>
+              <label>
+                E-mail des admissions
+                <input
+                  className={input}
+                  name="support_email"
+                  type="email"
+                  defaultValue={setup.data.preferences.support_email}
+                />
+              </label>
+              <label>
+                Envoi autorisé à partir de (heure Maroc)
+                <input
+                  className={input}
+                  type="number"
+                  name="contact_start_hour"
+                  min="0"
+                  max="23"
+                  defaultValue={setup.data.preferences.contact_start_hour}
+                />
+              </label>
+              <label>
+                Fin de la plage d’envoi (heure Maroc)
+                <input
+                  className={input}
+                  type="number"
+                  name="contact_end_hour"
+                  min="1"
+                  max="24"
+                  defaultValue={setup.data.preferences.contact_end_hour}
+                />
+              </label>
+              <Button disabled={busy}>
+                Enregistrer les contacts et horaires
+              </Button>
+            </form>
+          )}
+        </Card>
+      )}
+      {tab === "Mesures" && (
+        <>
+          {metrics.data ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  ["Complétude administrative", metrics.data.ready_pct + " %"],
+                  ["Utilisateurs actifs sur 7 jours", metrics.data.adoption],
+                  [
+                    "Délai observé assurance",
+                    metrics.data.insurance_response_hours === null
+                      ? "Pas de données"
+                      : metrics.data.insurance_response_hours.toFixed(1) + " h",
+                  ],
+                ].map(([l, v]) => (
+                  <Card className="p-5" key={l}>
+                    <p className="text-ink-2">{l}</p>
+                    <strong className="text-2xl">{v}</strong>
+                  </Card>
+                ))}
+              </div>
+              <Card className="p-5">
+                <h2 className="font-semibold">
+                  Mesurer avant et après le pilote
+                </h2>
+                <p className="mt-2 text-ink-2">{metrics.data.definition}</p>
+                <div className="mt-4 space-y-2">
+                  {metrics.data.observations.map((r) => (
+                    <p key={r.activity}>
+                      {activityLabels[r.activity] ?? r.activity} : avant{" "}
+                      {r.baseline_n} observation(s), pilote {r.pilot_n} · écart
+                      observé{" "}
+                      {r.observed_difference_seconds === null
+                        ? "non calculable"
+                        : Math.round(r.observed_difference_seconds) + " s"}
+                    </p>
+                  ))}
+                  {!metrics.data.observations.length && (
+                    <p>Aucune observation saisie. Aucun gain n’est inventé.</p>
+                  )}
+                </div>
+                {write && (
+                  <form
+                    className="mt-4 grid gap-3 sm:grid-cols-4"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const b = fd(e.currentTarget);
+                      perform("/operations/observations", {
+                        ...b,
+                        seconds: Number(b.seconds),
+                      });
+                    }}
+                  >
+                    <label>
+                      Période
+                      <select className={input} name="cohort">
+                        <option value="baseline">Avant pilote</option>
+                        <option value="pilot">Pendant pilote</option>
+                      </select>
+                    </label>
+                    <label>
+                      Activité
+                      <select className={input} name="activity">
+                        {[
+                          "document_check",
+                          "admission",
+                          "insurance",
+                          "reminder",
+                          "phone_call",
+                        ].map((x) => (
+                          <option key={x} value={x}>
+                            {activityLabels[x] ?? x}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Durée observée (secondes)
+                      <input
+                        className={input}
+                        name="seconds"
+                        type="number"
+                        min="1"
+                        max="86400"
+                        required
+                      />
+                    </label>
+                    <div className="flex items-end">
+                      <Button disabled={busy}>Ajouter la mesure</Button>
+                    </div>
+                  </form>
+                )}
+              </Card>
+              <Card className="p-5">
+                <h3 className="font-semibold">Livraison des communications</h3>
+                <div className="mt-3 flex flex-wrap gap-3">
+                  {Object.entries(metrics.data.messages).map(([k, v]) => (
+                    <Pill key={k}>
+                      {states[k]} : {v}
+                    </Pill>
+                  ))}
+                </div>
+                <p className="mt-3 text-meta text-ink-2">
+                  Un message accepté par le fournisseur n’est pas déclaré livré
+                  sans notification authentifiée.
+                </p>
+              </Card>
+            </>
+          ) : (
+            <Skeleton className="h-40" />
+          )}
+        </>
+      )}
+      {tab === "Intégrations" && admin && (
+        <Card className="space-y-4 p-5">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            <Plug size={20} />
+            Échanges avec votre logiciel de gestion
+          </h2>
+          <p className="text-ink-2">
+            API d’admissions idempotente et statuts administratifs.
+            Import/export CSV disponible dans Parcours patients. Aucun
+            connecteur éditeur n’est présenté comme certifié.
+          </p>
+          <form
+            className="flex flex-wrap gap-3"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const v = fd(e.currentTarget);
+              const r = await perform("/operations/connections", v);
+              if (r) setSecret(String(r.token));
+            }}
+          >
+            <label className="flex-1">
+              Nom de la connexion
+              <input
+                className={input}
+                name="name"
+                required
+                placeholder="Logiciel de la clinique — test"
+              />
+            </label>
+            <Button className="self-end" disabled={busy}>
+              Créer une clé d’intégration
+            </Button>
+          </form>
+          {secret && (
+            <div className="rounded-card bg-warning-bg p-4">
+              <p>
+                Clé affichée une seule fois. Conservez-la côté serveur, jamais
+                dans le navigateur du patient.
+              </p>
+              <code className="block break-all select-all">{secret}</code>
+              <button className="mt-2 underline" onClick={() => setSecret("")}>
+                Masquer
+              </button>
+            </div>
+          )}
+          <div className="space-y-2">
+            {connections.data?.items.map((c) => (
+              <div key={c.id} className="flex items-center gap-3">
+                <span className="flex-1">
+                  {c.name} · {c.active ? "Active" : "Révoquée"}
+                </span>
+                {c.active && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() =>
+                      perform("/operations/connections/" + c.id, {}, "DELETE")
+                    }
+                  >
+                    Révoquer
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+          <pre className="overflow-auto rounded-card bg-surface-2 p-4 text-meta">
+            POST /api/operations/exchange/admissions{"\n"}GET
+            /api/operations/exchange/status{"\n"}Header: X-Integration-Key
+          </pre>
+          <div className="rounded-card bg-surface-2 p-4">
+            <h3 className="font-semibold">Logiciels repérés au Maroc</h3>
+            <p className="mt-2 text-sm text-ink-2">
+              Pistes de connexion à valider avec votre établissement, sans
+              partenariat ni compatibilité certifiée revendiqués.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-4">
+              {[
+                ["MASAHA", "https://www.masaha.ma/"],
+                [
+                  "MagicaHIS",
+                  "https://www.magicahealthtech.com/references.html",
+                ],
+                ["Mibtech", "https://mibtech.ma/"],
+                ["FireHIS", "https://firethunder.ma/"],
+              ].map(([name, url]) => (
+                <a
+                  key={name}
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-teal-700 underline"
+                >
+                  {name} ↗
+                </a>
+              ))}
+            </div>
+          </div>
+          <p className="text-meta text-ink-2">
+            Brevo : mode actuel {q.data?.messaging_provider ?? "—"}. Les clés et
+            expéditeurs se configurent côté serveur.
+          </p>
+        </Card>
+      )}
+      {tab === "Réseau" && (
+        <Card className="space-y-4 p-5">
+          <h2 className="text-lg font-semibold">
+            Vos établissements autorisés
+          </h2>
+          <p className="text-ink-2">{sites.data?.notice}</p>
+          {sites.data?.items.map((s) => (
+            <div
+              className="flex flex-wrap items-center gap-4 rounded-card border border-line p-4"
+              key={s.id}
+            >
+              <div className="flex-1">
+                <strong>{s.name}</strong>
+                <p>
+                  {s.metrics.active} dossiers actifs · {s.metrics.ready_pct} %
+                  complets administrativement
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                disabled={s.id === sites.data?.current}
+                onClick={() => {
+                  sessionStorage.setItem("m3aya_site", s.id);
+                  location.href = "/operations";
+                }}
+              >
+                Ouvrir cet établissement
+              </Button>
+            </div>
+          ))}
+        </Card>
+      )}
+      {selected && (
+        <div
+          className="fixed inset-0 z-40 flex justify-end bg-navy-900/35"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Dossier administratif"
+        >
+          <div className="h-full w-full max-w-3xl overflow-y-auto bg-page p-5 shadow-modal">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold">
+                {d?.reference ?? "Chargement…"} · dossier administratif
+              </h2>
+              <button
+                aria-label="Fermer le dossier"
+                onClick={() => setParams({})}
+              >
+                <X />
+              </button>
+            </div>
+            {error && (
+              <p
+                role="alert"
+                className="mb-3 rounded-card bg-critical-bg p-3 text-critical-text"
+              >
+                {error}
+              </p>
+            )}
+            {detail.isError ? (
+              <ErrorState onRetry={detail.refetch} />
+            ) : !d ? (
+              <Skeleton className="h-40" />
+            ) : (
+              <div className="space-y-4">
+                <Card className="p-5">
+                  <h3 className="text-lg font-semibold">{d.patient.name}</h3>
+                  <p className="text-ink-2">
+                    {d.patient.phone || "Téléphone non renseigné"} ·{" "}
+                    {d.patient.email || "E-mail non renseigné"}
+                  </p>
+                  <Link
+                    className="mt-3 inline-flex items-center gap-2 text-teal-700"
+                    to={"/parcours/" + d.id}
+                  >
+                    Ouvrir les documents et le parcours{" "}
+                    <ArrowUpRight size={16} />
+                  </Link>
+                  <p className="mt-3">
+                    {d.preparation.missing} pièce(s) bloquante(s) ·{" "}
+                    {d.preparation.submitted} pièce(s) reçue(s) à vérifier
+                  </p>
+                </Card>
+                {write && (
+                  <Card className="p-5">
+                    <h3 className="font-semibold">
+                      Affectation, transmission et situation
+                    </h3>
+                    <form
+                      key={d.id + ":" + d.revision}
+                      className="mt-3 grid gap-3 sm:grid-cols-2"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        perform(
+                          "/operations/cases/" + d.id,
+                          { ...fd(e.currentTarget), revision: d.revision },
+                          "PUT",
+                        );
+                      }}
+                    >
+                      <label>
+                        Responsable
+                        <select
+                          className={input}
+                          name="assigned_subject"
+                          defaultValue={d.assigned_subject}
+                        >
+                          <option value="">À affecter</option>
+                          {team.data?.items
+                            .filter((m) => m.active)
+                            .map((m) => (
+                              <option key={m.subject} value={m.subject}>
+                                {m.display_name}
+                                {!m.available ? " (absent)" : ""}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                      <label>
+                        Service
+                        <input
+                          className={input}
+                          name="department"
+                          defaultValue={d.department}
+                          required
+                        />
+                      </label>
+                      <label>
+                        État administratif
+                        <select
+                          className={input}
+                          name="phase"
+                          defaultValue={d.phase}
+                        >
+                          {["preparing", "ready", "arrived", "closed"].map(
+                            (k) => (
+                              <option value={k} key={k}>
+                                {states[k]}
+                              </option>
+                            ),
+                          )}
+                        </select>
+                      </label>
+                      <label>
+                        Situation particulière
+                        <select
+                          className={input}
+                          name="exception"
+                          defaultValue={d.exception}
+                        >
+                          <option value="">Aucune</option>
+                          {[
+                            ["no_smartphone", "Sans smartphone"],
+                            ["unreadable_document", "Document illisible"],
+                            ["insurance_wait", "Assurance sans réponse"],
+                            ["rescheduled", "Date déplacée"],
+                            ["contact_issue", "Contact à vérifier"],
+                          ].map(([k, v]) => (
+                            <option value={k} key={k}>
+                              {v}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <Button disabled={busy}>Confirmer la transmission</Button>
+                    </form>
+                    <p className="mt-3 text-meta text-ink-2">
+                      La complétude administrative ne conditionne pas les soins
+                      urgents. Aucun statut médical n’est calculé.
+                    </p>
+                  </Card>
+                )}
+                <Card className="p-5">
+                  <h3 className="font-semibold">
+                    Prises en charge et assurances
+                  </h3>
+                  <div className="mt-3 space-y-3">
+                    {d.insurance.map((i) => (
+                      <div
+                        key={i.id}
+                        className="rounded-card border border-line p-3"
+                      >
+                        <p>
+                          <strong>{i.insurer}</strong> · {i.reference} ·{" "}
+                          <Pill>{states[i.status]}</Pill>
+                        </p>
+                        <p className="mt-2 text-ink-2">{i.note}</p>
+                        {write && (
+                          <form
+                            className="mt-3 flex flex-wrap gap-2"
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              perform(
+                                "/operations/insurance/" + i.id,
+                                {
+                                  ...fd(e.currentTarget),
+                                  revision: i.revision,
+                                },
+                                "PUT",
+                              );
+                            }}
+                          >
+                            <select
+                              aria-label="Nouvel état assurance"
+                              className={input + " flex-1"}
+                              name="status"
+                            >
+                              {(
+                                {
+                                  draft: ["submitted"],
+                                  submitted: [
+                                    "more_info",
+                                    "approved",
+                                    "rejected",
+                                  ],
+                                  more_info: [
+                                    "submitted",
+                                    "approved",
+                                    "rejected",
+                                  ],
+                                  approved: [],
+                                  rejected: ["draft"],
+                                }[i.status] ?? []
+                              ).map((k) => (
+                                <option value={k} key={k}>
+                                  {states[k]}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              aria-label="Note assurance"
+                              className={input}
+                              name="note"
+                              placeholder="Référence et vérification administrative, sans contenu médical"
+                              maxLength={2000}
+                            />
+                            <Button
+                              disabled={busy || i.status === "approved"}
+                              size="sm"
+                            >
+                              Confirmer l’état reçu
+                            </Button>
+                          </form>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {write && (
+                    <form
+                      className="mt-4 grid gap-3 sm:grid-cols-2"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const b = fd(e.currentTarget);
+                        perform("/operations/cases/" + d.id + "/insurance", {
+                          ...b,
+                          due_date: b.due_date || null,
+                        });
+                      }}
+                    >
+                      <label>
+                        Organisme
+                        <input
+                          className={input}
+                          name="insurer"
+                          required
+                          placeholder="CNSS, mutuelle, assurance…"
+                        />
+                      </label>
+                      <label>
+                        Référence de la demande
+                        <input className={input} name="reference" />
+                      </label>
+                      <label>
+                        À suivre avant le
+                        <input className={input} type="date" name="due_date" />
+                      </label>
+                      <label>
+                        Note administrative
+                        <input className={input} name="note" maxLength={2000} />
+                      </label>
+                      <Button disabled={busy}>Préparer une demande</Button>
+                    </form>
+                  )}
+                  <p className="mt-3 text-meta text-ink-2">
+                    Suivi des démarches uniquement. Aucun accord d’assurance ni
+                    justificatif médical n’est généré.
+                  </p>
+                </Card>
+                <Card className="p-5">
+                  <h3 className="font-semibold">
+                    Suivi financier administratif · MAD
+                  </h3>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    {[
+                      ["Devis confirmé", d.finance.quote],
+                      ["Couverture enregistrée", d.finance.coverage],
+                      [
+                        "Part patient estimative",
+                        d.finance.estimated_patient_share,
+                      ],
+                      ["Solde estimatif", d.finance.balance],
+                    ].map(([l, n]) => (
+                      <div
+                        className="rounded-card bg-surface-2 p-3"
+                        key={String(l)}
+                      >
+                        <p className="text-meta text-ink-2">{l}</p>
+                        <strong>{money(Number(n))}</strong>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-meta text-ink-2">
+                    {d.finance.notice}
+                  </p>
+                  {write && (
+                    <form
+                      className="mt-4 grid gap-3 sm:grid-cols-2"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const b = fd(e.currentTarget);
+                        perform("/operations/cases/" + d.id + "/finance", {
+                          kind: b.kind,
+                          reference: b.reference,
+                          amount_cents: Math.round(Number(b.amount) * 100),
+                          confirmed: b.confirmed === "on",
+                        });
+                      }}
+                    >
+                      <label>
+                        Écriture
+                        <select className={input} name="kind">
+                          {[
+                            ["quote", "Devis confirmé"],
+                            ["coverage", "Couverture confirmée"],
+                            ["deposit", "Acompte reçu hors plateforme"],
+                            [
+                              "refund",
+                              "Remboursement effectué hors plateforme",
+                            ],
+                          ].map(([k, v]) => (
+                            <option value={k} key={k}>
+                              {v}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Montant en MAD
+                        <input
+                          className={input}
+                          name="amount"
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          required
+                        />
+                      </label>
+                      <label>
+                        Référence du justificatif
+                        <input
+                          className={input}
+                          name="reference"
+                          required
+                          maxLength={120}
+                        />
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" name="confirmed" required />
+                        J’ai vérifié le justificatif.
+                      </label>
+                      <Button disabled={busy}>Enregistrer l’écriture</Button>
+                    </form>
+                  )}
+                  <ul className="mt-4 space-y-2 text-sm">
+                    {d.finance.entries.map((r) => (
+                      <li
+                        key={r.id}
+                        className="flex flex-wrap items-center gap-2 border-t border-line pt-2"
+                      >
+                        <span className="flex-1">
+                          {entryLabels[r.kind] ?? r.kind} ·{" "}
+                          {money(r.amount_cents)} · {r.reference}{" "}
+                          {r.voided ? "· annulée" : ""}
+                        </span>
+                        {admin && !r.voided && r.kind !== "void" && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={busy}
+                            onClick={() => {
+                              const reason = window.prompt(
+                                "Motif de correction (3 caractères minimum)",
+                              );
+                              if (reason)
+                                perform(
+                                  "/operations/finance/" + r.id + "/void",
+                                  { reason },
+                                );
+                            }}
+                          >
+                            Corriger par annulation
+                          </Button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+                <Card className="p-5">
+                  <h3 className="font-semibold">
+                    Communications et reprise humaine
+                  </h3>
+                  <p className="mt-2 text-meta text-ink-2">
+                    {q.data?.messaging_provider === "console"
+                      ? "Simulation : aucun message externe ne sera envoyé."
+                      : "Envoi externe après confirmation humaine, pendant les horaires configurés par l’établissement."}{" "}
+                    Un rappel maximum par 24 h.
+                  </p>
+                  {write && (
+                    <form
+                      className="mt-3 flex flex-wrap gap-3"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        perform("/operations/cases/" + d.id + "/messages", {
+                          ...fd(e.currentTarget),
+                          request_key: crypto.randomUUID(),
+                          approved: true,
+                        });
+                      }}
+                    >
+                      <select
+                        className={input}
+                        name="template"
+                        aria-label="Modèle de communication"
+                      >
+                        <option value="documents">
+                          Une étape administrative attend le patient
+                        </option>
+                        <option value="contact">
+                          Contacter le service des admissions
+                        </option>
+                        <option value="reminder">
+                          Consulter ses prochaines étapes
+                        </option>
+                      </select>
+                      <select
+                        className={input}
+                        name="channel"
+                        aria-label="Canal de communication"
+                      >
+                        {["auto", "email", "sms", "whatsapp"].map((c) => (
+                          <option key={c}>{c}</option>
+                        ))}
+                      </select>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" required />
+                        Je valide l’envoi du modèle administratif.
+                      </label>
+                      <Button disabled={busy}>Confirmer et transmettre</Button>
+                    </form>
+                  )}
+                  <div className="mt-4 space-y-2">
+                    {messages.data?.items.map((m) => (
+                      <div
+                        className="rounded-card border border-line p-3"
+                        key={m.id}
+                      >
+                        <Pill
+                          tone={m.status === "failed" ? "critical" : "neutral"}
+                        >
+                          {states[m.status] ?? m.status}
+                        </Pill>
+                        <p className="mt-2">{m.body}</p>
+                        {write && m.status === "inbound" && (
+                          <Button
+                            className="mt-2"
+                            size="sm"
+                            variant="secondary"
+                            onClick={() =>
+                              perform("/operations/messages/" + m.id + "/read")
+                            }
+                          >
+                            Marquer la réponse traitée
+                          </Button>
+                        )}
+                        {write &&
+                          ["failed", "sending", "simulated"].includes(
+                            m.status,
+                          ) && (
+                            <Button
+                              className="mt-2"
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => {
+                                const reason = window.prompt(
+                                  "Comment avez-vous joint le patient ?",
+                                );
+                                if (reason)
+                                  perform(
+                                    "/operations/messages/" + m.id + "/manual",
+                                    { reason },
+                                  );
+                              }}
+                            >
+                              Déclarer le contact manuel
+                            </Button>
+                          )}
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+                {d.support.length > 0 && (
+                  <Card className="p-5">
+                    <h3 className="font-semibold">Demandes d’aide</h3>
+                    {d.support.map((s) => (
+                      <div className="mt-3" key={s.id}>
+                        <p>
+                          {s.message} · {s.status}
+                        </p>
+                        {write && s.status === "open" && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() =>
+                              perform(
+                                "/operations/support/" + s.id + "/resolve",
+                              )
+                            }
+                          >
+                            Marquer résolue
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </Card>
+                )}
+                {write && (
+                  <Card className="p-5">
+                    <h3 className="font-semibold">
+                      Déplacer la date administrative
+                    </h3>
+                    <form
+                      className="mt-3 space-y-3"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        perform(
+                          "/operations/cases/" + d.id + "/reschedule",
+                          fd(e.currentTarget),
+                        );
+                      }}
+                    >
+                      <label>
+                        Date fournie par l’établissement
+                        <input
+                          className={input}
+                          type="date"
+                          name="date"
+                          required
+                        />
+                      </label>
+                      <label>
+                        Motif administratif
+                        <input
+                          className={input}
+                          name="reason"
+                          required
+                          minLength={3}
+                        />
+                      </label>
+                      <Button variant="secondary" disabled={busy}>
+                        Confirmer et décaler les tâches non terminées
+                      </Button>
+                    </form>
+                    <p className="mt-2 text-meta text-ink-2">
+                      Cette action ne choisit ni acte ni date médicale.
+                    </p>
+                  </Card>
+                )}
+                <Card className="p-5">
+                  <h3 className="font-semibold">Transmissions et historique</h3>
+                  {write && (
+                    <form
+                      className="mt-3 flex gap-2"
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const f = e.currentTarget;
+                        const r = await perform(
+                          "/operations/cases/" + d.id + "/notes",
+                          fd(f),
+                        );
+                        if (r) f.reset();
+                      }}
+                    >
+                      <input
+                        className={input}
+                        name="text"
+                        aria-label="Commentaire interne administratif"
+                        placeholder="Transmission administrative, sans donnée médicale"
+                        required
+                        maxLength={2000}
+                      />
+                      <Button className="self-end" disabled={busy}>
+                        Ajouter
+                      </Button>
+                    </form>
+                  )}
+                  <div className="mt-4 space-y-3">
+                    {d.events.map((e) => (
+                      <div className="rounded-card bg-surface-2 p-3" key={e.id}>
+                        <p className="text-meta text-ink-2">
+                          {eventLabels[e.kind] ?? e.kind} ·{" "}
+                          {new Date(e.created_at).toLocaleString("fr-FR")}
+                        </p>
+                        <p className="mt-1 whitespace-pre-wrap break-words">
+                          {describe(e.text)}
+                        </p>
+                        {write && e.kind === "profile_requested" && (
+                          <Button
+                            className="mt-2"
+                            size="sm"
+                            onClick={() =>
+                              perform(
+                                "/operations/events/" +
+                                  e.id +
+                                  "/confirm-profile",
+                              )
+                            }
+                          >
+                            Vérifier et confirmer ces coordonnées
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

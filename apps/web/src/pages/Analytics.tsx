@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "@/lib/api";
@@ -25,6 +26,7 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-[28px] font-semibold tracking-tight">Analyses</h1>
+      <Link className="block rounded-panel border border-line bg-mint-100 p-4 text-teal-800" to="/operations?onglet=mesures">Mesurer les résultats du pilote à partir d’observations réelles →</Link>
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {kpis.map(([l, v]) => (<Card key={l} className="p-4"><p className="text-ink-2">{l}</p><p className="mt-2 text-[40px] font-bold leading-none tracking-tight text-navy-900 tabular-nums">{v}</p></Card>))}
       </div>

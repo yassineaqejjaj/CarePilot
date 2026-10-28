@@ -4,7 +4,7 @@ import datetime as dt
 import uuid
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, LargeBinary, String, Text, TypeDecorator
+from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, LargeBinary, String, Text, TypeDecorator, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.core import get_settings
@@ -301,3 +301,154 @@ class SupportRequest(Base):
     encrypted_message: Mapped[bytes] = mapped_column(LargeBinary)
     status: Mapped[str] = mapped_column(String(20), default="open")
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+# Administrative operations: additive, no clinical decision data.
+class TeamMember(Base):
+    __tablename__ = "team_member"
+    __table_args__ = (UniqueConstraint('establishment_id','subject'),)
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    subject: Mapped[str] = mapped_column(String(100))
+    display_name: Mapped[str] = mapped_column(String(120))
+    role: Mapped[str] = mapped_column(String(20), default="coordinator")
+    department: Mapped[str] = mapped_column(String(100), default="Admissions")
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    available: Mapped[bool] = mapped_column(Boolean, default=True)
+    backup_subject: Mapped[str] = mapped_column(String(100), default="")
+
+
+class AdministrativeCase(Base):
+    __tablename__ = "administrative_case"
+    journey_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('patient_journey.id'), primary_key=True)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    assigned_subject: Mapped[str] = mapped_column(String(100), default="")
+    department: Mapped[str] = mapped_column(String(100), default="Admissions")
+    exception: Mapped[str] = mapped_column(String(40), default="")
+    phase: Mapped[str] = mapped_column(String(20), default="preparing")
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class InsuranceCase(Base):
+    __tablename__ = "insurance_case"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    journey_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('patient_journey.id'),index=True)
+    insurer: Mapped[str] = mapped_column(String(120))
+    reference: Mapped[str] = mapped_column(String(100),default="")
+    status: Mapped[str] = mapped_column(String(30),default="draft")
+    encrypted_note: Mapped[bytes] = mapped_column(LargeBinary)
+    due_date: Mapped[dt.date | None] = mapped_column(Date,nullable=True)
+    revision: Mapped[int] = mapped_column(Integer,default=1)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True),default=_now)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True),default=_now)
+
+
+class AdministrativeEvent(Base):
+    __tablename__ = "administrative_event"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True,default=uuid.uuid4)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    journey_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('patient_journey.id'),index=True)
+    actor: Mapped[str] = mapped_column(String(100))
+    kind: Mapped[str] = mapped_column(String(30))
+    encrypted_text: Mapped[bytes] = mapped_column(LargeBinary)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True),default=_now)
+
+
+class FinanceEntry(Base):
+    __tablename__ = "finance_entry"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True,default=uuid.uuid4)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    journey_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('patient_journey.id'),index=True)
+    kind: Mapped[str] = mapped_column(String(20))  # quote, coverage, deposit, refund, void
+    amount_cents: Mapped[int] = mapped_column(Integer)
+    reference: Mapped[str] = mapped_column(String(120),default="")
+    actor: Mapped[str] = mapped_column(String(100))
+    reverses_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey('finance_entry.id'),nullable=True,unique=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True),default=_now)
+
+
+class SavedDraft(Base):
+    __tablename__ = "saved_draft"
+    __table_args__ = (UniqueConstraint('establishment_id','actor','key'),)
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True,default=uuid.uuid4)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    actor: Mapped[str] = mapped_column(String(100))
+    key: Mapped[str] = mapped_column(String(100))
+    encrypted_payload: Mapped[bytes] = mapped_column(LargeBinary)
+    revision: Mapped[int] = mapped_column(Integer,default=1)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True),default=_now)
+
+
+class TimeObservation(Base):
+    __tablename__ = "time_observation"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True,default=uuid.uuid4)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    actor: Mapped[str] = mapped_column(String(100))
+    cohort: Mapped[str] = mapped_column(String(10))
+    activity: Mapped[str] = mapped_column(String(40))
+    seconds: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True),default=_now)
+
+
+class IntegrationConnection(Base):
+    __tablename__ = "integration_connection"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True,default=uuid.uuid4)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    name: Mapped[str] = mapped_column(String(100))
+    token_hash: Mapped[str] = mapped_column(String(64),unique=True)
+    active: Mapped[bool] = mapped_column(Boolean,default=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True),default=_now)
+
+
+class ExternalAdmission(Base):
+    __tablename__ = "external_admission"
+    __table_args__ = (UniqueConstraint('connection_id','external_id'),)
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True,default=uuid.uuid4)
+    connection_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('integration_connection.id'))
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    external_id: Mapped[str] = mapped_column(String(100))
+    journey_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('patient_journey.id'))
+
+
+class CompanionGrant(Base):
+    __tablename__ = "companion_grant"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True,default=uuid.uuid4)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    patient_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('patient.id'),index=True)
+    label: Mapped[str] = mapped_column(String(100))
+    token_hash: Mapped[str] = mapped_column(String(64),unique=True)
+    code_hash: Mapped[str] = mapped_column(String(64))
+    expires_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True))
+    revoked: Mapped[bool] = mapped_column(Boolean,default=False)
+    attempts: Mapped[int] = mapped_column(Integer,default=0)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True),default=_now)
+
+
+class Dispatch(Base):
+    __tablename__ = "dispatch"
+    __table_args__ = (UniqueConstraint('establishment_id','request_key'),)
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True,default=uuid.uuid4)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    journey_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('patient_journey.id'),index=True)
+    request_key: Mapped[str] = mapped_column(String(80))
+    message_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey('message_log.id'),nullable=True)
+    encrypted_body: Mapped[bytes] = mapped_column(LargeBinary)
+    status: Mapped[str] = mapped_column(String(20),default="draft")
+    actor: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True),default=_now)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True),default=_now)
+
+class FacilityPreferences(Base):
+    __tablename__='facility_preferences'
+    establishment_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('establishment.id'),primary_key=True)
+    support_phone: Mapped[str] = mapped_column(String(30),default='')
+    support_email: Mapped[str] = mapped_column(String(200),default='')
+    contact_start_hour: Mapped[int] = mapped_column(Integer,default=8)
+    contact_end_hour: Mapped[int] = mapped_column(Integer,default=20)
+
+class PatientContactPreference(Base):
+    __tablename__='patient_contact_preference'
+    patient_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('patient.id'),primary_key=True)
+    establishment_id: Mapped[uuid.UUID] = _est_fk()
+    enabled: Mapped[bool] = mapped_column(Boolean,default=True)

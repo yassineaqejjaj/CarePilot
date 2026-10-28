@@ -1,4 +1,4 @@
-import { getToken } from "@/auth";
+import { getToken, setEffectiveRoles } from "@/auth";
 
 export class ApiError extends Error {
   constructor(public status: number, public detail: string) { super(detail || String(status)); }
@@ -9,7 +9,7 @@ async function raw(path: string, init: RequestInit = {}): Promise<Response> {
   const isForm = init.body instanceof FormData;  // le navigateur fixe lui-même le Content-Type multipart
   const r = await fetch(`/api${path}`, {
     ...init,
-    headers: { ...(isForm ? {} : { "Content-Type": "application/json" }), Authorization: `Bearer ${token}`, ...(init.headers ?? {}) },
+    headers: { ...(isForm ? {} : { "Content-Type": "application/json" }), Authorization: `Bearer ${token}`, ...(sessionStorage.getItem("m3aya_site") ? {"X-Establishment-ID": sessionStorage.getItem("m3aya_site")!} : {}), ...(init.headers ?? {}) },
   });
   if (!r.ok) {
     let detail = "";
@@ -20,7 +20,9 @@ async function raw(path: string, init: RequestInit = {}): Promise<Response> {
 }
 
 export async function api<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
-  return (await raw(path, init)).json() as Promise<T>;
+  const value=await (await raw(path,init)).json();
+  if(path==="/me" && Array.isArray(value.roles))setEffectiveRoles(value.roles);
+  return value as T;
 }
 
 /** Télécharge un fichier protégé (jeton Bearer) et le propose à l'enregistrement. */

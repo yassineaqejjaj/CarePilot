@@ -48,6 +48,7 @@ export default function JourneyDetailPage() {
       <Card className="p-5">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-[28px] font-semibold tracking-tight">{d.patient.name}</h1>
+          <Link className="mt-2 inline-flex text-teal-700 underline" to={"/operations?dossier="+id}>Préparation, assurances et suivi financier</Link>
           <Pill tone={STATE_TONE[d.state]}>{d.state_label}</Pill>
           <Button className="ml-auto" variant="secondary" size="sm" disabled={inviteM.isPending} onClick={() => inviteM.mutate()}><Send size={14} />Envoyer le lien patient</Button>
         </div>

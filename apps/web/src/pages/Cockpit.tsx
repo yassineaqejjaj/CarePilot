@@ -48,6 +48,7 @@ export default function CockpitPage() {
         </div>
       </div>
 
+      <Link to="/operations" className="flex items-center justify-between rounded-panel border border-teal-700/20 bg-mint-100 p-4 text-teal-800"><span><strong>Que faut-il traiter maintenant ?</strong><span className="mt-1 block text-sm">Documents reçus, prises en charge et transmissions entre équipes.</span></span><ArrowRight size={20}/></Link>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
         <Kpi label="Parcours actifs" value={k.active}><Pill tone="success">{k.finished_week} terminé{k.finished_week > 1 ? "s" : ""} (7 j)</Pill></Kpi>
         <Kpi label="En bonne voie" value={k.on_track}><div className="flex items-center gap-2"><Progress value={k.on_track_pct} /><span className="whitespace-nowrap text-meta tabular-nums">{k.on_track_pct} %</span></div></Kpi>

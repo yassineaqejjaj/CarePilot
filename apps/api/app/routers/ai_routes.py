@@ -140,6 +140,8 @@ def proposals(status: str = "pending", p: Principal = Coord, db: Session = Depen
 
 def _decide(proposal_id, decision, p, db):
     prop = svc.get_scoped(db, m.AIProposal, proposal_id, p)
+    db.execute(select(m.AIProposal.id).where(m.AIProposal.id==prop.id).with_for_update())
+    db.refresh(prop)
     if prop.status != "pending":
         raise HTTPException(409, "Proposition déjà traitée")
     prop.status, prop.decided_by = decision, p.sub

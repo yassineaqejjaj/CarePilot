@@ -6,6 +6,9 @@ Les messages sont strictement administratifs (voir templates_msg).
 from __future__ import annotations
 
 import logging
+import datetime as dt
+from zoneinfo import ZoneInfo
+from sqlalchemy import select
 import smtplib
 import uuid
 from dataclasses import dataclass
@@ -64,8 +67,32 @@ class LiveProvider:
             return SendResult("failed", error=type(exc).__name__)
 
 
+class BrevoProvider:
+    """Brevo server-side transport. No retry on an ambiguous network result."""
+    def send(self, channel: str, to: str, subject: str, body: str) -> SendResult:
+        s=get_settings()
+        if not s.brevo_api_key:return SendResult("failed",error="Clé Brevo absente")
+        if channel=="email":
+            if not s.brevo_sender_email:return SendResult("failed",error="Expéditeur Brevo non configuré")
+            endpoint="smtp/email";payload={"sender":{"email":s.brevo_sender_email,"name":s.brevo_sender_name},"to":[{"email":to}],"subject":subject,"textContent":body}
+        elif channel=="sms":
+            endpoint="transactionalSMS/send";payload={"sender":s.brevo_sms_sender,"recipient":to.lstrip('+'),"content":body,"type":"transactional","unicodeEnabled":True}
+        elif channel=="whatsapp":
+            template=s.brevo_whatsapp_template_ar if any('\u0600'<=c<='\u06ff' for c in body) else s.brevo_whatsapp_template_fr
+            if not template or not s.brevo_whatsapp_sender:return SendResult("failed",error="Modèle WhatsApp approuvé et expéditeur requis")
+            if 'http' in body:return SendResult("failed",error="Invitation avec lien : utilisez e-mail/SMS ou transmettez le lien manuellement ; modèle WhatsApp dynamique non configuré")
+            endpoint="whatsapp/sendMessage";payload={"senderNumber":s.brevo_whatsapp_sender.lstrip('+'),"contactNumbers":[to.lstrip('+')],"templateId":template}
+        else:return SendResult("failed",error="Canal inconnu")
+        try:
+            r=httpx.post("https://api.brevo.com/v3/"+endpoint,json=payload,headers={"api-key":s.brevo_api_key,"accept":"application/json"},timeout=15)
+            if r.status_code>=300:return SendResult("failed",error="Brevo HTTP "+str(r.status_code))
+            ref=str(r.json().get("messageId", ""))[:80]
+            return SendResult("sent",provider_ref=ref)
+        except Exception as exc:return SendResult("failed",error=type(exc).__name__+" : vérifier le fournisseur avant tout nouvel envoi")
+
+
 def get_provider():
-    return LiveProvider() if get_settings().messaging_provider == "live" else ConsoleProvider()
+    return BrevoProvider() if get_settings().messaging_provider == "brevo" else LiveProvider() if get_settings().messaging_provider == "live" else ConsoleProvider()
 
 
 def pick_channel(patient: m.Patient) -> tuple[str, str] | None:
@@ -81,10 +108,26 @@ def pick_channel(patient: m.Patient) -> tuple[str, str] | None:
 
 def send_to_patient(db: Session, est_id: uuid.UUID, patient: m.Patient, journey_id: uuid.UUID | None,
                     kind: str, subject: str, body: str, channel: str | None = None) -> m.MessageLog:
+    s=get_settings()
+    preference=db.get(m.PatientContactPreference,patient.id)
+    policy_error="Rappels désactivés à la demande du patient" if preference and not preference.enabled and kind in ("reminder","info") else ""
+    if journey_id:
+        db.execute(select(m.PatientJourney.id).where(m.PatientJourney.id==journey_id).with_for_update())
+    if not policy_error and kind in ("reminder","info") and s.messaging_provider!="console":
+        from app.compliance import has_consent
+        prefs=db.get(m.FacilityPreferences,est_id)
+        hour=dt.datetime.now(ZoneInfo(s.timezone)).hour
+        start=prefs.contact_start_hour if prefs else 8;end=prefs.contact_end_hour if prefs else 20
+        if not has_consent(db,patient.id):policy_error="Accord patient requis avant une relance"
+        elif not start<=hour<end:policy_error="Hors plage d’envoi configurée"
+        elif db.scalar(select(m.MessageLog.id).where(m.MessageLog.journey_id==journey_id,m.MessageLog.kind.in_(["reminder","info"]),m.MessageLog.status.in_(["sent","delivered"]),m.MessageLog.created_at>=dt.datetime.now(dt.timezone.utc)-dt.timedelta(hours=24)).limit(1)):policy_error="Un rappel a déjà été transmis depuis moins de 24 heures"
     chosen = pick_channel(patient)
-    if channel and channel != "auto" and ((channel in ("whatsapp", "sms") and patient.phone) or (channel == "email" and patient.email)):
-        chosen = (channel, patient.phone if channel != "email" else patient.email)
-    if patient.anonymized_at or chosen is None:
+    if channel and channel != "auto":
+        available = (channel in ("whatsapp", "sms") and patient.phone) or (channel == "email" and patient.email)
+        chosen = (channel, patient.phone if channel != "email" else patient.email) if available else None
+    if policy_error:
+        res,ch,to=SendResult("failed",error=policy_error),chosen[0] if chosen else channel or "sms",chosen[1] if chosen else ""
+    elif patient.anonymized_at or chosen is None:
         res, ch, to = SendResult("failed", error="Aucun canal de contact valide"), channel or "sms", ""
     else:
         ch, to = chosen

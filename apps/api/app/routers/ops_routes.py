@@ -118,6 +118,7 @@ def reject_document(task_id: uuid.UUID, body: RejectIn, p: Principal = Coord, db
     if t.status != "submitted":
         raise HTTPException(409, "Seule une pièce en revue peut être redemandée")
     t.status, t.response = "todo", None
+    t.detail = body.reason[:500]
     svc.audit(db, p, "task.reject", "task", t.id, journey_id=str(t.journey_id), title=t.title, reason=body.reason[:200])
     db.commit()
     return {"id": str(t.id), "status": t.status}

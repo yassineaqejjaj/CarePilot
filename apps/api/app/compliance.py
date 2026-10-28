@@ -52,6 +52,27 @@ def anonymize_patient(db: Session, patient: m.Patient) -> None:
             t.response = None
         for inv in db.scalars(select(m.Invitation).where(m.Invitation.journey_id == j.id)).all():
             db.delete(inv)
+    from app import operations as ops
+    for j in journeys:
+        for r in db.scalars(select(m.AdministrativeEvent).where(m.AdministrativeEvent.journey_id==j.id)):
+            r.encrypted_text=ops.encrypt("Contenu supprimé lors de l’archivage du patient")
+        for r in db.scalars(select(m.Dispatch).where(m.Dispatch.journey_id==j.id)):
+            r.encrypted_body=ops.encrypt("Contenu supprimé lors de l’archivage du patient")
+        for r in db.scalars(select(m.InsuranceCase).where(m.InsuranceCase.journey_id==j.id)):
+            r.reference="";r.encrypted_note=ops.encrypt("")
+        for r in db.scalars(select(m.FinanceEntry).where(m.FinanceEntry.journey_id==j.id)):
+            r.reference="Référence anonymisée"
+        for t in j.tasks:t.detail=""
+    pref=db.get(m.PatientContactPreference,patient.id)
+    if pref:pref.enabled=False
+    for r in db.scalars(select(m.CompanionGrant).where(m.CompanionGrant.patient_id==patient.id)):
+        r.revoked=True;r.label="Accompagnant archivé"
+    # Drafts are encrypted, scoped to their author and scrubbed if they contain this identity.
+    identifiers=[v.lower() for v in (patient.phone,patient.email,patient.first_name+' '+patient.last_name) if v]
+    for draft in db.scalars(select(m.SavedDraft).where(m.SavedDraft.establishment_id==patient.establishment_id)).all():
+        payload=__import__('json').dumps(ops.decrypt(draft.encrypted_payload),ensure_ascii=False).lower()
+        data=ops.decrypt(draft.encrypted_payload)
+        if any(v in payload for v in identifiers) or (data.get('first_name')==patient.first_name and data.get('last_name')==patient.last_name):db.delete(draft)
     for request in db.scalars(select(m.SupportRequest).where(m.SupportRequest.patient_id == patient.id)).all():
         db.delete(request)
     # Prepared action plans may contain locally rendered names/messages.
@@ -70,6 +91,10 @@ def purge_expired(db: Session, now: dt.datetime | None = None, est_id: uuid.UUID
     q = select(m.Patient).where(m.Patient.anonymized_at.is_(None))
     if est_id:
         q = q.where(m.Patient.establishment_id == est_id)
+    if not dry_run:
+        drafts=select(m.SavedDraft).where(m.SavedDraft.updated_at < now-dt.timedelta(days=30))
+        if est_id:drafts=drafts.where(m.SavedDraft.establishment_id==est_id)
+        for draft in db.scalars(drafts).all():db.delete(draft)
     count = 0
     for pat in db.scalars(q).all():
         est = db.get(m.Establishment, pat.establishment_id)
@@ -87,11 +112,16 @@ def purge_expired(db: Session, now: dt.datetime | None = None, est_id: uuid.UUID
 def export_patient_data(db: Session, patient: m.Patient) -> dict:
     """Droit d'accès : toutes les données détenues sur le patient, sous forme lisible."""
     journeys = db.scalars(select(m.PatientJourney).where(m.PatientJourney.patient_id == patient.id)).all()
+    from app import operations as ops
     return {
         "patient": {"first_name": patient.first_name, "last_name": patient.last_name, "birth_date": patient.birth_date.isoformat() if patient.birth_date else None,
-                    "phone": patient.phone, "email": patient.email, "language": patient.language, "reference": patient.ref},
+                    "phone": patient.phone, "email": patient.email, "language": patient.language, "reference": patient.ref, "administrative_reminders_enabled": (db.get(m.PatientContactPreference,patient.id).enabled if db.get(m.PatientContactPreference,patient.id) else True)},
         "journeys": [{
             "reference": j.reference, "procedure": j.procedure, "surgery_date": j.surgery_date.isoformat(), "status": j.status,
+            "administrative_messages": [{"status":r.status,"body":ops.decrypt(r.encrypted_body)} for r in db.scalars(select(m.Dispatch).where(m.Dispatch.journey_id==j.id))],
+            "administrative_events": [{"kind":r.kind,"text":ops.decrypt(r.encrypted_text)} for r in db.scalars(select(m.AdministrativeEvent).where(m.AdministrativeEvent.journey_id==j.id))],
+            "insurance": [{"insurer":r.insurer,"reference":r.reference,"status":r.status,"note":ops.decrypt(r.encrypted_note)} for r in db.scalars(select(m.InsuranceCase).where(m.InsuranceCase.journey_id==j.id))],
+            "financial_administration": ops.finances(db,j.id),
             "tasks": [{"title": t.title, "due_date": t.due_date.isoformat(), "status": t.status} for t in j.tasks],
             "documents": [{"filename": d.filename, "size": d.size, "uploaded_at": d.created_at.isoformat()}
                           for d in db.scalars(select(m.Document).where(m.Document.journey_id == j.id)).all()],

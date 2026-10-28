@@ -22,6 +22,8 @@ import Settings from "@/pages/Settings";
 import { LiveUpdates, LiveBadge } from "@/lib/live";
 import ComingSoon from "@/pages/ComingSoon";
 
+const Operations = lazy(() => import("@/pages/Operations"));
+const CompanionEntry = lazy(() => import("@/pages/CompanionEntry"));
 const Catalogue = lazy(() => import("@/pages/Catalogue"));
 const Designer = lazy(() => import("@/pages/Designer"));
 const Analytics = lazy(() => import("@/pages/Analytics"));
@@ -36,6 +38,7 @@ function Sidebar({ canDesign, tasks, journeys, validation }: { canDesign: boolea
   const groups: { title: string; items: Item[] }[] = [
     { title: "Espace de travail", items: [
       { to: "/app", label: "Vue d'ensemble", icon: ic(LayoutDashboard) },
+      { to: "/operations", label: "Centre de préparation", icon: ic(CheckSquare) },
       { to: "/parcours", label: "Parcours patients", icon: ic(RouteIcon), badge: journeys },
       { to: "/taches", label: "Tâches", icon: ic(CheckSquare), badge: tasks, tone: "red" },
       { to: "/communications", label: "Communications", icon: ic(MessageSquare) }] },
@@ -79,13 +82,13 @@ function Topbar({ me, pending }: { me?: Me; pending?: number }) {
   const nav = useNavigate();
   const [q, setQ] = useState("");
   return (
-    <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-line bg-white/95 px-6 py-3 backdrop-blur">
+    <header className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-line bg-white/95 px-3 py-3 backdrop-blur sm:px-6">
       <div className="flex items-center gap-2.5 rounded-card border border-line bg-white px-3 py-1.5">
         <span className="flex h-8 w-8 items-center justify-center rounded-ctl bg-mint-100 text-teal-700"><Building2 size={16} /></span>
         <div className="leading-tight"><p className="text-meta text-ink-2">Établissement</p><p className="font-semibold text-navy-900">{me?.establishment ?? "…"}</p></div>
-        <ChevronDown size={14} className="text-ink-2" />
+        <button aria-label="Changer d’établissement" className="flex h-9 w-9 items-center justify-center rounded-ctl hover:bg-surface-2" onClick={()=>nav("/operations?onglet=reseau")}><ChevronDown size={14} className="text-ink-2" /></button>
       </div>
-      <form className="relative max-w-xl flex-1" onSubmit={(e) => { e.preventDefault(); nav(`/parcours?q=${encodeURIComponent(q)}`); }} role="search">
+      <form className="relative order-last w-full md:order-none md:w-auto md:max-w-xl md:flex-1" onSubmit={(e) => { e.preventDefault(); nav(`/parcours?q=${encodeURIComponent(q)}`); }} role="search">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-2" />
         <input aria-label="Rechercher un patient, un parcours, un identifiant" value={q} onChange={(e) => setQ(e.target.value)}
           className="h-10 w-full rounded-ctl border border-transparent bg-surface-2 pl-9 pr-3 placeholder:text-ink-2 focus:border-teal-500 focus:bg-white"
@@ -96,7 +99,7 @@ function Topbar({ me, pending }: { me?: Me; pending?: number }) {
       </button>
       <div className="flex items-center gap-2.5">
         <Avatar name={displayName()} className="h-9 w-9 text-xs" />
-        <div className="leading-tight"><p className="font-semibold text-navy-900">{displayName()}</p><p className="text-meta text-ink-2">{roleLabel(roles())}</p></div>
+        <div className="hidden leading-tight sm:block"><p className="font-semibold text-navy-900">{displayName()}</p><p className="text-meta text-ink-2">{roleLabel(roles())}</p></div>
         <button aria-label="Déconnexion" title="Déconnexion" className="rounded-ctl p-2 text-ink-2 hover:bg-surface-2" onClick={() => logout()}><LogOut size={16} /></button>
       </div>
     </header>
@@ -104,9 +107,10 @@ function Topbar({ me, pending }: { me?: Me; pending?: number }) {
 }
 
 export default function App() {
-  if (roles().includes("patient") || window.location.pathname.startsWith("/p/")) {
+  if (roles().includes("patient") || (window.location.pathname.startsWith("/p/") || window.location.pathname.startsWith("/accompagner/"))) {
     return (
       <Routes>
+        <Route path="/accompagner/:token" element={<Suspense fallback={<p>Chargement…</p>}><CompanionEntry /></Suspense>} />
         <Route path="/p/:token" element={patientSession() ? <Navigate to="/portal" replace /> : <PatientEntry />} />
         <Route path="/portal" element={<Portal />} />
         <Route path="*" element={<Navigate to="/portal" replace />} />
@@ -129,10 +133,13 @@ function StaffApp() {
       <div className="min-w-0 flex-1">
         <LiveUpdates />
         <Topbar me={me.data} pending={cockpit.data?.validation_pending} />
+        <nav className="flex gap-2 overflow-x-auto border-b border-line bg-white px-3 py-2 lg:hidden" aria-label="Navigation équipe mobile">{[["/app","Accueil"],["/operations","Préparation"],["/parcours","Parcours"],["/communications","Messages"],["/modeles","Modèles"],["/analyses","Analyses"]].map(([to,label])=><NavLink key={to} to={to} className="whitespace-nowrap rounded-ctl bg-surface-2 px-3 py-2 text-sm text-teal-800">{label}</NavLink>)}</nav>
         <main className="mx-auto max-w-[1180px] px-6 py-6">
           <Suspense fallback={<p role="status" className="p-6 text-ink-2">Chargement…</p>}>
           <Routes>
             <Route path="/app" element={<CockpitPage />} />
+            <Route path="/operations" element={<Operations />} />
+            <Route path="/equipe" element={<Navigate to="/operations?onglet=equipe" replace />} />
             <Route path="/parcours" element={<JourneysPage />} />
             <Route path="/parcours/:id" element={<JourneyDetailPage />} />
             <Route path="/validation" element={<ValidationPage />} />
@@ -147,7 +154,7 @@ function StaffApp() {
             <Route path="/communications" element={<Communications />} />
             <Route path="/rapports" element={<Reports />} />
             {isAdmin && <Route path="/parametres" element={<Settings />} />}
-            {[["equipe", "Équipe"], ...(isAdmin ? [] : [["parametres", "Paramètres"]])].map(([p, t]) =>
+            {[...(isAdmin ? [] : [["parametres", "Paramètres"]]) ].map(([p, t]) =>
               <Route key={p} path={`/${p}`} element={<ComingSoon title={t} />} />)}
             <Route path="*" element={<Navigate to="/app" />} />
           </Routes>

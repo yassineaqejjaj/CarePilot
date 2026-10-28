@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 
 from app.core import get_settings
 
-LIMITS = [("/api/portal/session", 10), ("/api/portal/", 120), ("/api/", 600)]  # (préfixe, requêtes par minute et par IP)
+LIMITS = [("/api/operations/companion/session", 10), ("/api/portal/session", 10), ("/api/portal/", 120), ("/api/", 600)]  # (préfixe, requêtes par minute et par IP)
 _hits: dict[tuple[str, str], deque] = defaultdict(deque)
 
 
