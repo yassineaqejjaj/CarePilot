@@ -1,295 +1,258 @@
-# CarePilot
+# CarePilot Morocco
 
-**Administrative patient-journey coordination for French private clinics.**
+**Administrative patient-journey coordination for Moroccan private clinics.**  
 *Every patient. Every step. Connected.*
 
-CarePilot helps a clinic's admissions team keep every patient's pre- and post-operation paperwork on track, from **D-21 to D+7** around an ambulatory surgery. It shows who needs attention today, drafts the reminders for you, and never sends anything without a human saying yes.
+CarePilot gives an admissions team one place to prepare ambulatory surgery from **D−21 to D+7**: collect paperwork, see overdue tasks, prepare reminders, and keep an audit trail of human approvals.
 
-> **Demo only.** All patients, clinics and documents in this repository are **fictitious**. CarePilot is **not** presented as GDPR- or HDS-compliant, and it must not process real health data before the legal, contractual and security review described in [Security & compliance](#security--compliance). It coordinates **administrative** tasks only: no diagnosis, no medical decision.
+**[Open the live demo](https://carepilot-maroc.vercel.app)** · [Architecture](docs/architecture.md) · [Moroccan regulatory review](docs/compliance-morocco.md) · [Security](docs/security.md)
 
-![Operations cockpit](docs/screenshots/01-cockpit.png)
+> **Synthetic data only.** The public deployment is a demonstration. SMS, WhatsApp and email delivery are simulated; OpenAI is not configured. Do not enter real patient data. The application is not certified by the CNDP and does not make medical decisions. Online passwords are generated separately and are never committed here.
 
----
+![Operations dashboard](docs/screenshots/01-cockpit.png)
 
-## Contents
+## For clinic teams
 
-- [For users](#for-users): what it does, screen by screen
-- [Quick start](#quick-start)
-- [For developers](#for-developers): architecture, AI layer, API, data model, tests
-- [Security & compliance](#security--compliance)
-- [Status & limitations](#status--limitations)
+### Your daily workflow
 
----
+1. Open the **Operations cockpit** to see urgent dossiers, missing paperwork and upcoming deadlines.
+2. Create a patient journey manually, or import a **CSV** of scheduled procedures. Phone numbers are normalized to **+212**; dates accept **DD/MM/YYYY**.
+3. Send a patient an access link. They confirm their date of birth, read the privacy notice, then use a mobile portal in **French or Arabic**, including right-to-left layout.
+4. Review uploaded documents and mark them validated or request a replacement.
+5. Read, edit and approve reminder drafts. Each approval and delivery attempt is recorded. The public demo records simulated delivery.
+6. Export journeys or audit history, monitor progress, and handle patient rights requests.
 
-# For users
+The default administrative pathway requests a **CIN or passport**, **AMO certificate (CNSS / CNOPS)**, admission questionnaire, insurance approval and signed administrative consent. No live CNSS, CNOPS or insurer integration is implemented.
 
-## Who uses it
+### Dashboard
 
-| Role | What they can do |
-|---|---|
-| **Coordinator** (admissions team) | Work the priority queue, review documents, validate or reject what the AI prepared |
-| **Designer** | Build and version patient-journey templates |
-| **Admin** | Everything above, plus approve knowledge-base documents and see AI usage and cost |
-| **Viewer** | Read-only access to the dashboards |
-| **Patient** | A mobile space limited to *their own* journey: upload documents, follow progress |
+The priority queue ranks journeys by deadline and missing blocking documents. Counts come from actual demo records; they are not copied from the design board.
 
-Each clinic only ever sees its own data.
+![Full operations dashboard](docs/screenshots/01b-cockpit-full.png)
 
-## The screens
+### Patient journey detail
 
-### 1. Operations cockpit: "what needs me today?"
+See intervention details, coordinator, dated milestones, expected documents, recent activity and the next proposal awaiting approval. The **Send patient link** button creates a time-limited invitation.
 
-![Operations cockpit, full page](docs/screenshots/01b-cockpit-full.png)
+![Patient journey detail](docs/screenshots/02-journey-detail.png)
 
-The home page opens with a daily summary: active journeys, how many are on track, incomplete files, tasks to handle (with the urgent ones counted), deadlines within 72 hours, and journeys completed this week.
+### Human review and communications
 
-- **Priority queue**, ranked by deadline and impact on the surgery date. Each card shows the patient, the procedure, the missing document, the owner and a one-click action.
-- **CarePilot Assistant** (dark panel): recommendations such as "5 patients have not answered for more than 72 h". Anything the AI prepared is clearly marked *Human validation required*.
-- A filterable table of all journeys below (on track, action required, waiting for patient, late, completed).
-
-### 2. Journey detail: the whole story of one patient
-
-![Journey detail](docs/screenshots/02-journey-detail.png)
-
-- **Next administrative action**: a suggestion prepared by CarePilot (dashed mint border = AI-prepared, not yet validated). You read the exact message, then **Reject**, **Edit** or **Approve & send**.
-- **Timeline** from D-21 to D+7 with owner and due date on every step; the current step is highlighted.
-- **Expected documents** with their status (*Validated*, *Under review*, *Missing*) and a **recent activity** feed that says who did what: team, patient or automation.
-
-### 3. Validation queue: nothing leaves without you
+Messages can be edited before approval. Rules prepare missing-document reminders without calling a language model. A communications journal distinguishes **sent**, **simulated** and **failed** deliveries; contact details are masked.
 
 ![Validation queue](docs/screenshots/03-validation-queue.png)
 
-Every message draft and every administrative check prepared by the AI waits here. Approving or rejecting is recorded in the audit log with your name.
+### Journey designer and analytics
 
-> In this demo, "Approve & send" **validates** the proposal but the SMS / e-mail delivery is **simulated**. No real message is ever sent. The "Edit" button is not implemented yet.
-
-### 4. Journey designer: build the care path once
+Published templates are immutable. Create a new draft version, edit its stages and publish it; existing journeys keep their original version. Analytics shows completion, delays and reminders. **Time saved is a configurable estimate, not a measured ROI claim.**
 
 ![Journey designer](docs/screenshots/04-journey-designer.png)
-
-A visual editor for the journey template (the first one ships ready: *Ambulatory surgery D-21 → D+7*, 15 steps, 5 required documents). Published journeys are **immutable**: to change one you create a new version, edit it, and publish it. Patients already in the journey keep the version they started with.
-
-### 5. Analytics
-
 ![Analytics](docs/screenshots/05-analytics.png)
 
-Completeness rate, average completion delay, reminders sent, an *estimate* of time saved, and (for admins) token usage and estimated cost per AI agent.
+### Mobile patient portal — French and Arabic
 
-### 6. The patient's mobile space
+Patients use a private link and date-of-birth check, or a demo Keycloak account. A versioned privacy notice is shown before their journey. They can upload PDF, JPEG, PNG or HEIC documents, answer administrative tasks, download a data export and submit a rights request. Staff verify submissions.
 
-<img src="docs/screenshots/06-patient-mobile.png" alt="Patient mobile space" width="320">
+<table><tr><td><img src="docs/screenshots/06-patient-mobile.png" width="280" alt="French patient portal"></td><td><img src="docs/screenshots/08-patient-arabic.png" width="280" alt="Arabic patient portal with right-to-left layout"></td></tr></table>
 
-A calm, large-type space: one clear thing to do first, a progress bar, the list of tasks with their status, key dates, and the admissions desk contact. A permanent reminder says it is for administrative matters only and points to the surgeon for medical questions (and to 15 in an emergency).
+<details><summary>Privacy notice and secure entry screen</summary>
 
-## How the AI helps (and where it stops)
+<img src="docs/screenshots/12-patient-entry.png" width="280" alt="Patient link date-of-birth verification">
+<img src="docs/screenshots/07-patient-consent.png" width="280" alt="Versioned privacy notice and consent">
 
-Four specialised agents, each with a narrow scope:
+</details>
 
-| Agent | Does | Never does |
-|---|---|---|
-| **Administrative verification** | Finds missing documents, flags anomalies | Decide that a file is valid |
-| **Communication** | Drafts reminders from *approved templates* and procedures | Send anything on its own |
-| **Follow-up** | Classifies a patient's reply, lists what remains, proposes allowed next actions | Change a status |
-| **Summary** | Summarises administrative interactions for the coordinator | Give medical information |
+### Create journeys, import and configure
 
-Rules that hold everywhere: the AI only *proposes*; a named human validates; no direct patient identifier is sent to the model; the whole AI layer can be switched off globally or per clinic.
+CSV import supports comma or semicolon separators, a dry run, row-level errors and up to 500 records. Required columns: `first_name`, `last_name`, `surgery_date`. Optional: `birth_date`, `phone`, `email`, `procedure`, `surgeon`, `owner`, `language` (`fr`/`ar`), `channel` (`whatsapp`/`sms`/`email`).
 
----
+![New journey form](docs/screenshots/11-new-journey.png)
 
-# Quick start
+Administrators configure the clinic's CNDP references, rights contact and retention period. Retention processing anonymizes eligible closed dossiers. A demo-only reset is available when `DEMO_MODE=true`.
 
-You need **Docker** (or Podman) with Compose, **Python 3.11+**, and **Node 18+**.
+![Compliance settings](docs/screenshots/10-compliance-settings.png)
+
+### Roles
+
+| Role | Scope |
+|---|---|
+| Coordinator | Journeys, tasks, document review, invitations, message approval, rights requests |
+| Designer | Journey template creation and versioning |
+| Admin | Coordinator and designer functions, settings, audit export, erasure |
+| Viewer | Read-only staff views |
+| Patient | Their own portal only |
+
+The patient portal is bilingual; the staff interface is currently French. **Team management** and **template catalogue** remain placeholder pages. User administration uses Keycloak.
+
+## Run locally
+
+Requirements: **Python 3.12**, **Node.js 20+**, Docker Compose or Podman Compose. The repository is private.
 
 ```bash
-git clone https://github.com/yassineaqejjaj/carepilot.git && cd carepilot
-cp .env.example .env
-
-# 1. Postgres (with pgvector) and Keycloak (auth), with the realm pre-imported
-docker compose up -d postgres keycloak          # `podman compose` works too
-
-# 2. API: migrate, load the fictitious demo data, run
-python3.12 -m venv .venv && source .venv/bin/activate
+git clone https://github.com/yassineaqejjaj/carepilot.git
+cd carepilot
+python3.12 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt pytest
-(cd apps/api && PYTHONPATH=../..:. alembic upgrade head && PYTHONPATH=../..:. python seed.py)
-PYTHONPATH=.:apps/api uvicorn app.main:app --port 8000
 
-# 3. Web app (in another terminal)
-cd apps/web && npm install && npm run dev       # http://localhost:5173
+# Separate ports avoid conflicts with other projects.
+POSTGRES_PORT=5442 KEYCLOAK_PORT=8081 docker compose -p carepilot up -d postgres keycloak
+# Wait until PostgreSQL and http://localhost:8081/realms/carepilot are ready.
+export DATABASE_URL=postgresql+psycopg://carepilot:carepilot@localhost:5442/carepilot
+export OIDC_ISSUER=http://localhost:8081/realms/carepilot
+export PUBLIC_WEB_URL=http://localhost:5173
+(cd apps/api && PYTHONPATH=../..:. alembic upgrade head && PYTHONPATH=../..:. python seed.py)
+PYTHONPATH=.:apps/api uvicorn app.main:app --port 8010
 ```
 
-Open <http://localhost:5173> and sign in with a **development-only** demo account:
+In a second terminal:
 
-| Account | Password | Lands on |
+```bash
+cd carepilot/apps/web
+npm ci
+VITE_KEYCLOAK_URL=http://localhost:8081 VITE_API_TARGET=http://localhost:8010 npm run dev
+```
+
+Open [localhost:5173](http://localhost:5173).
+
+| Development account | Development password | View |
 |---|---|---|
-| `staff.demo` (Claire Dubois, coordinator/designer/admin) | `demo-only` | Back-office |
-| `patient.demo` (Sophie Martin) | `demo-only` | Mobile patient space |
+| `staff.demo` — Salma El Idrissi | `demo-only` | Clinic team |
+| `patient.demo` — Khadija Alaoui | `demo-only` | Patient portal |
 
-**Port conflicts?** Override with `POSTGRES_PORT=5442 KEYCLOAK_PORT=8081 docker compose up -d postgres keycloak`, then point the API at it (`DATABASE_URL`, `OIDC_ISSUER`) and the web app at Keycloak (`VITE_KEYCLOAK_URL`, plus `VITE_API_TARGET` if the API is not on :8000).
+These passwords apply **only locally**. The live deployment uses generated passwords supplied privately to the owner.
 
-**Reset the demo data:** `RESET=1 python seed.py` (from `apps/api`).
+To reset synthetic records: activate the virtual environment, set `DATABASE_URL`, then run `bash scripts/reset-demo.sh`. **This deletes and recreates demo data.** To stop containers without removing data: `docker compose -p carepilot stop`.
 
-**AI features:** without an `OPENAI_API_KEY` the app runs fully; the proposals you see are seeded demo data. To use real generation, set the `OPENAI_*` variables below. Only synthetic data should ever be used.
+The full Compose file also describes RabbitMQ/Celery, Caddy, Prometheus, Grafana and SeaweedFS. Those services have not all been validated together. The instructions above run the API and Vite on the host. `.env.example` is a configuration reference; its container database hostname is not appropriate for a host-run API.
 
----
+## For developers
 
-# For developers
+### Architecture and stack
 
-## Architecture
-
-A **modular monolith**: one FastAPI service, one Celery worker, one React SPA, and an AI layer (`ai/`) that has **no import from the application code**.
+A modular monolith exposes a REST/OpenAPI API. A separate worker runs scheduled rules and retention. All generation and embeddings go through the independent `ai/` layer.
 
 ```mermaid
 flowchart LR
-  WEB[React SPA] --> API[FastAPI]
-  WEB -. OIDC + PKCE .-> KC[Keycloak]
-  API -- JWT / JWKS --> KC
-  API --> PG[(PostgreSQL + pgvector)]
-  API --> MQ[(RabbitMQ)] --> WRK[Celery worker] --> PG
-  API --> AG[ai/ agents] --> PROV[OpenAIProvider]
-  AG --> RAG[RAG service] --> PROV
-  RAG --> PG
-  PROV --> OAI[(OpenAI API)]
+  Staff[Clinic team] --> Web[React frontend]
+  Patient[Patient FR / AR] --> Web
+  Web --> KC[Keycloak OIDC + PKCE]
+  Web --> API[FastAPI modular monolith]
+  API --> DB[(PostgreSQL + pgvector)]
+  API --> Files[Encrypted patient documents]
+  API --> Msg[SMTP / SMS / WhatsApp adapter]
+  API --> AI[Central OpenAIProvider]
+  AI --> OAI[OpenAI Responses + Embeddings]
+  Worker[Celery scheduled rules] --> DB
 ```
 
-### Repository layout
-
-```
-apps/
-  api/        FastAPI app (app/), Alembic migrations, demo seed
-  web/        React + TypeScript + Vite SPA, Playwright e2e tests
-  worker/     Celery worker (overdue-task scan; skeleton)
-ai/
-  providers/  OpenAIProvider (the only code that calls OpenAI) + MockProvider
-  agents/     the four agents
-  rag/        chunking, embeddings, vector-store protocol
-  guardrails/ identifier redaction, medical-advice filter
-  prompts/    system prompts
-infrastructure/  Keycloak realm + image, Caddy, Prometheus
-scripts/      start-api.sh, make-deploy-realm.py
-tests/        pytest suite
-docs/         architecture.md, security.md, screenshots/
-```
-
-### Tech stack (open source, except the LLM)
-
-| Layer | Choice |
+| Layer | Components |
 |---|---|
-| Web | React 18, TypeScript, Vite, Tailwind CSS (design tokens from the design board), shadcn-style components, TanStack Query, React Hook Form + Zod, React Flow (designer), Recharts (analytics), Inter |
-| API | Python 3.12, FastAPI, Pydantic, SQLAlchemy 2, Alembic, REST / OpenAPI (`/docs`) |
-| Data | PostgreSQL 16 + pgvector, RabbitMQ + Celery |
-| Auth | Keycloak (OIDC authorization code + PKCE), RBAC from realm roles, tenant from a token claim |
-| AI | OpenAI Python SDK: Responses API (structured outputs validated by Pydantic) and Embeddings API |
-| Ops | Docker/Podman Compose, Caddy, Prometheus (`/metrics`), Grafana |
-| Tests | pytest, Playwright |
+| Frontend | React, TypeScript, Vite, Tailwind, shadcn-style local components, TanStack Query, React Hook Form, Zod, React Flow, Recharts |
+| API | Python, FastAPI, Pydantic, SQLAlchemy, Alembic |
+| Data | PostgreSQL 16, pgvector; encrypted documents in DB by default, optional local disk |
+| Identity | Keycloak for staff; short-lived signed patient sessions for invitation access |
+| AI | Official OpenAI Python SDK; Responses, structured Pydantic outputs, embeddings and approved-procedure RAG |
+| Jobs | RabbitMQ and Celery; reminder drafts require human approval |
+| Tests | pytest, real-pgvector integration, Playwright with installed Google Chrome |
 
-### Multi-tenancy and RBAC
+```text
+apps/api/         API, Alembic migrations, synthetic seed
+apps/web/         Staff and patient UI, Playwright tests
+apps/worker/      Reminder and retention jobs
+ai/               Central provider, agents, RAG and guardrails
+infrastructure/   Keycloak, Caddy and monitoring configuration
+scripts/          Deployment helpers and demo reset
+tests/            API, authorization, Morocco-specific and pgvector tests
+docs/             Architecture, security, CNDP review and screenshots
+```
 
-Every business table carries `establishment_id`. The establishment comes from the **access-token claim**, never from a request parameter, and every query is scoped to it (`services.get_scoped`). Cross-clinic access returns **404**, not 403, so it reveals nothing. Roles (`admin`, `coordinator`, `designer`, `viewer`, `patient`) come from Keycloak realm roles; patients are additionally bound to a `patient_id` claim and can only reach `/api/portal/*`.
+### Security and data handling
 
-### Data model (core)
+- Every protected resource is scoped to the establishment in the authenticated token. Unauthorized cross-clinic resources return 404. Patient tokens cannot access staff routes.
+- Invitations store a **token hash**. They expire after 72 hours by default and lock after five incorrect birth-date attempts. The birth-date check is an additional knowledge check, **not strong multifactor authentication**. Patient sessions last 12 hours by default.
+- Uploads are size-limited, names are sanitized and file signatures are checked. Bytes are encrypted with **Fernet before storage**. Staff document downloads are audited. **Malware scanning is not implemented.**
+- Privacy notices and consent are versioned. Patients can export their data and submit access, rectification, opposition or deletion requests. Admins can anonymize a dossier. Retention rules are configurable; the deployed demo does not yet run the scheduled worker.
+- Rate limiting is in memory for one API instance. API responses use `no-store`, `nosniff` and frame restrictions. Secrets stay server-side.
 
-`establishment` → `patient`, `journey_template` → `template_step`; `patient_journey` (a versioned instance of a template) → `task` (due date = surgery date + step offset); `audit_log`; `knowledge_document` → `knowledge_chunk` (pgvector embedding); `ai_usage` (tokens and cost per call); `ai_proposal` (what an agent prepared, awaiting a human).
+### Controlled AI
 
-See [docs/architecture.md](docs/architecture.md) for the ER diagram.
+Four agents cover administrative verification, communication drafts, follow-up classification and structured summaries. They propose actions; business rules and people authorize changes.
 
-### The AI layer
+The RAG indexes **approved administrative procedures only**, scoped by establishment and version. Identifiable patient data is not embedded. Guardrails detect email, Moroccan CIN patterns, +212 phone numbers and long social-insurance identifiers. Regex checks cannot reliably detect names or every identifier.
 
-- **One door to OpenAI.** `OpenAIProvider` handles calls, timeouts and retries (SDK-level), a **monthly token budget per clinic**, **cost estimation** (prices come from env, never hard-coded), structured output validation, and **metadata-only logging** (clinic, agent, model, token counts: never a prompt or a response). Calls use `store=False`.
-- **Guardrails before sending.** E-mail, phone and French NIR are redacted from free text; if a direct identifier remains the call is refused. The patient's first name is substituted **locally after** the model answers, so it never leaves the server.
-- **Agents propose, humans dispose.** Agents return typed results which become `ai_proposal` rows (`pending`). Approval/rejection is audited. Agents have no write access to journey or task status. Missing documents are computed **deterministically in code**, not by the model.
-- **RAG.** Approved procedure documents → chunks (~800 chars) → embeddings → pgvector (cosine `<=>`). Retrieval is filtered by establishment **and** `status = 'approved'`. No patient data is embedded.
-- **Kill switches.** `AI_ENABLED` (global) and `establishment.ai_enabled`.
-- **Testable offline.** `MockProvider` returns canned structured outputs and deterministic embeddings; the whole suite runs without network or API key.
+`AI_ENABLED` and the clinic switch can disable AI. Calls are additionally blocked until a CNDP transfer reference is entered. **Entering a reference does not validate its authenticity or make a transfer legally authorized.** The public demo has no OpenAI key. Seeded or rule-generated proposals demonstrate the workflow.
+
+The provider controls timeout/retries, output validation, metadata logging and token budgets; usage and estimated costs are recorded per clinic. Configure current unit prices before relying on costs.
 
 ### Configuration
 
-| Variable | Purpose |
+| Variables | Purpose |
 |---|---|
-| `DATABASE_URL` | SQLAlchemy URL (`postgresql+psycopg://…`) |
-| `OIDC_ISSUER`, `OIDC_AUDIENCE` | Keycloak realm URL and expected `aud` (`carepilot-api`) |
-| `AUTH_MODE` | `oidc` (default). `test` (HS256 tokens) is refused outside `ENV=dev/test` |
-| `AI_ENABLED` | Global AI kill switch |
-| `OPENAI_API_KEY`, `OPENAI_LLM_MODEL`, `OPENAI_EMBEDDING_MODEL` | Model names are **not** hard-coded |
-| `OPENAI_TIMEOUT_SECONDS`, `OPENAI_MAX_RETRIES` | Defaults 30 / 3 |
-| `OPENAI_PRICE_IN_PER_1M_EUR`, `OPENAI_PRICE_OUT_PER_1M_EUR` | Used for cost tracking; cost is only meaningful once set |
-| `EMBEDDING_DIM` | Must match the embedding model and the `vector(N)` column (1536) |
-| `VITE_KEYCLOAK_URL/REALM/CLIENT` | Public web-app settings (never put a secret in `VITE_*`) |
+| `DATABASE_URL`, `OIDC_ISSUER`, `OIDC_AUDIENCE` | Database and staff authentication |
+| `ENV`, `AUTH_MODE` | Runtime mode; test auth is refused outside dev/test |
+| `PUBLIC_WEB_URL` | Base URL included in patient invitations |
+| `PATIENT_SESSION_SECRET`, `FILE_ENCRYPTION_KEY` | Required outside dev/test; back up the file key separately |
+| `PATIENT_SESSION_HOURS`, `INVITATION_HOURS`, `INVITATION_MAX_ATTEMPTS` | Patient access lifetime and lockout |
+| `STORAGE_BACKEND`, `STORAGE_DIR`, `MAX_UPLOAD_MB` | Encrypted DB or local storage; default upload limit 10 MB |
+| `MESSAGING_PROVIDER` | `console` (simulated) or `live` |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Email over SMTP with STARTTLS |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_SMS_FROM`, `TWILIO_WHATSAPP_FROM` | SMS/WhatsApp adapter; sender/template approval may be required |
+| `AI_ENABLED`, `OPENAI_API_KEY`, `OPENAI_LLM_MODEL`, `OPENAI_EMBEDDING_MODEL` | AI switches and model configuration |
+| `OPENAI_TIMEOUT_SECONDS`, `OPENAI_MAX_RETRIES`, `OPENAI_PRICE_IN_PER_1M_EUR`, `OPENAI_PRICE_OUT_PER_1M_EUR` | Provider limits and estimated EUR cost, not MAD billing |
+| `TIMEZONE` | Defaults to `Africa/Casablanca`, including its timezone changes |
+| `DEMO_MODE` | Enables destructive synthetic-data reset; keep false for real operation |
+| `VITE_KEYCLOAK_URL`, `VITE_KEYCLOAK_REALM`, `VITE_KEYCLOAK_CLIENT` | Public frontend configuration; never put secrets in Vite variables |
 
-No API key ever reaches the browser.
+Messaging adapters exist and are tested with mocked providers. **No live delivery or WhatsApp onboarding has been verified.** SMTP is a protocol; Twilio and deployment hosts are external commercial services, while application dependencies are open source.
 
-### API at a glance
+### API entry points
 
-All routes are under `/api`; interactive docs at `/docs`.
+Interactive API documentation: `/docs` on the API service. Staff endpoints include `/api/journeys`, `/api/journeys/import`, `/api/journeys/export.csv`, `/api/tasks`, `/api/messages`, `/api/settings`, `/api/data-requests`, `/api/audit/export.csv` and `/api/ai/proposals`. Patient endpoints live under `/api/portal`: session, notice/consent, own journeys, uploads, data export and rights requests.
 
-| Area | Routes |
-|---|---|
-| Overview | `GET /cockpit`, `GET /journeys`, `GET /journeys/{id}/detail`, `GET /analytics`, `GET /audit`, `GET /me` |
-| Journeys | `POST /patients`, `POST /journeys`, `GET /journeys/{id}/tasks`, `POST /tasks/{id}/complete` |
-| Templates | `GET /templates`, `PUT /templates/{id}/steps` (drafts only), `POST /templates/{id}/new-version`, `POST /templates/{id}/publish` |
-| AI | `POST /ai/documents` (+ `/approve`), `POST /ai/verify/{journey}`, `POST /ai/communicate`, `POST /ai/followup`, `POST /ai/summary/{journey}`, `GET /ai/proposals`, `POST /ai/proposals/{id}/approve` or `/reject`, `GET /ai/usage` |
-| Patient portal | `GET /portal/me`, `POST /portal/tasks/{id}/submit` |
-
-Operational: `GET /healthz`, `GET /metrics` (Prometheus).
-
-### Testing
+### Tests
 
 ```bash
-pytest                                                    # 18 tests, no network, SQLite (1 more with PG_TEST_URL)
-PG_TEST_URL=postgresql+psycopg://carepilot:carepilot@localhost:5432/carepilot pytest   # + real pgvector ranking
-cd apps/web && npm run e2e                                # 7 Playwright scenarios (needs the full stack running + Google Chrome)
+# From the repository root, with the virtual environment active
+pytest -q
+PG_TEST_URL=postgresql+psycopg://carepilot:carepilot@localhost:5442/carepilot pytest -q
+
+# Local end-to-end tests (RESET synthetic demo data first)
+export DATABASE_URL=postgresql+psycopg://carepilot:carepilot@localhost:5442/carepilot
+(cd apps/web && npm run e2e)
 ```
 
-- **API** (`tests/test_api.py`): journey generation and due dates, cockpit priorities, **tenant isolation**, RBAC, template versioning/immutability, patient-portal scoping.
-- **AI** (`tests/test_ai.py`): redaction, provider cost/budget/guardrails with a fake OpenAI client, RAG filtered by clinic and approval, agent behaviour, kill switch, usage tracking.
-- **pgvector** (`tests/test_pgvector.py`): cosine ranking, draft exclusion and clinic isolation on a real PostgreSQL.
-- **E2E** (`apps/web/e2e`): Keycloak redirect, cockpit, journey detail, human validation, designer immutability, mobile patient space (incl. no horizontal scroll).
-
-The E2E tests mutate the demo data (a document submitted, a draft version created); reset with `RESET=1 python seed.py`.
+Validation: **37 pytest tests passed** locally, including real pgvector retrieval; **10 Playwright scenarios passed locally and all 10 also passed against the live Vercel/Railway deployment** on 28 October 2026. They cover tenant isolation, patient consent, link lockout, encrypted files, invalid uploads, rights/erasure, retention, CSV simulation/import and human approval. The browser tests mutate synthetic data. `scripts/test-deployed.mjs` runs against the online demo using the owner's ignored credentials file; do not run it against a clinic environment.
 
 ### Deployment
 
-`Dockerfile.api` builds the API image (its entrypoint `scripts/start-api.sh` migrates, seeds the demo data idempotently, then serves on `$PORT`). `infrastructure/keycloak/Dockerfile` builds a demo Keycloak image, and `scripts/make-deploy-realm.py` generates a realm with **random passwords** and the frontend's redirect URIs (the output stays out of git). The Keycloak image uses `start-dev`, which is fine for a demo but not for production. A hosted deployment is **not live yet**.
+- **Frontend:** [Vercel live demo](https://carepilot-maroc.vercel.app), with `/api/*` forwarded to Railway.
+- **API:** Railway Docker service, migrations and synthetic seed at startup; `/healthz` probes process health.
+- **Database:** Railway PostgreSQL/pgvector service with a verified attached volume at `/var/lib/postgresql/data`. Backup/restore policy still needs validation before real use.
+- **Staff authentication:** Railway Keycloak, optimized production startup. Current demo uses embedded H2; move identity storage to a backed-up PostgreSQL database before operational use.
+- **Not deployed:** Celery/RabbitMQ and the monitoring stack. Automated reminders/retention currently require a manual API trigger in the online demo.
 
----
+The Keycloak realm generation helper creates deployment-specific passwords outside version control. The development realm contains local demo passwords only. Deployment is currently CLI-based, not a validated GitHub auto-deployment pipeline.
 
-# Security & compliance
+**Migration limitation:** the initial Alembic revision currently creates tables from model metadata. Existing databases with an older initial schema require an explicit upgrade migration; recreating a disposable demo database is not an acceptable upgrade strategy for real records.
 
-CarePilot is built to *support* a compliant setup; it is **not** certified or compliant by itself.
+## Moroccan regulation
 
-**In place**
+Morocco has data-protection obligations under **Law 09-08**. The CNDP publishes a patient-follow-up authorization procedure and requires supporting notice/consent or another legal basis, and processor documentation. See the [CNDP's official procedure](https://www.cndp.ma/procedures-de-notification-process/) and [notification requirements](https://www.cndp.ma/notifier-un-traitement/).
 
-- Fictitious data only; patients carry a pseudonymous `ref` that is what the AI sees.
-- Tenant isolation and RBAC enforced server-side and covered by tests; patient accounts are confined to their own journey.
-- Redaction and refusal of direct identifiers before any OpenAI call; first names substituted locally; `store=False`; metadata-only logs.
-- Human validation for every AI proposal; every sensitive action in the audit log.
-- Global and per-clinic AI kill switch; per-clinic token budget and cost tracking.
-- No secret in the frontend; the test auth mode cannot run in production.
+CarePilot includes technical mechanisms to support those obligations, but a clinic still needs to establish its lawful basis, complete applicable CNDP formalities, review foreign hosting and provider transfers, and contract with processors. Retention periods must be chosen for the clinic's actual obligations. Railway reports the current API, identity and database region as **SFO (United States)**. This deployment is for synthetic demonstrations only; it is not a Morocco-resident hosting arrangement. Foreign processing must be reviewed before real patient use.
 
-**Known limits**
+The Moroccan focus does not establish a blanket exemption from GDPR or the EU AI Act where their territorial scope otherwise applies. Legal applicability should be checked for the actual clinic, patients and service arrangement. See the [detailed Moroccan review](docs/compliance-morocco.md), including unresolved questions. No legal compliance, HDS equivalence or qualified electronic-signature claim is made.
 
-- Regex redaction does **not** catch names in free text. Treat patient free text sent to the Follow-up agent as a risk until the flow is reviewed.
-- No application-level column encryption, no automated retention/purge, no rate limiting, no dependency scanning in CI yet.
-- The patient "upload" in the demo records a confirmation; file storage (SeaweedFS) is not wired.
+## Remaining work before use with real patients
 
-**Before any real health data is processed through OpenAI** you need, at minimum: a data-protection impact assessment and legal basis under GDPR; a data-processing agreement with OpenAI covering location and international transfers; **HDS-certified hosting** for health data and a check that the flows to OpenAI are compatible with it; and a security review / penetration test. See [docs/security.md](docs/security.md).
+- Obtain applicable CNDP approvals and validate transfers, hosting, processor contracts and Arabic legal copy.
+- Add malware scanning, backup/restore exercises, secret rotation, a security assessment and robust patient authentication.
+- Move Keycloak to persistent PostgreSQL; run scheduled jobs and monitoring; implement proper incremental migrations.
+- Complete team management and template catalogue, hospital-system integration, insurer connections and qualified signatures if required.
+- Activate and verify messaging with approved senders/templates; evaluate AI on synthetic cases before enabling it.
+- Improve concurrent delivery/idempotency and retention coverage across derived records and backups.
 
-**OpenAI cost and limits.** One structured generation = one Responses call. Loading a procedure = one embeddings call per batch of chunks, and each RAG-assisted agent run adds one query embedding. Measure on synthetic data through `GET /api/ai/usage` before setting a budget.
+## Licenses
 
-**Licenses.** Components are open source (React, Vite, TanStack, React Hook Form, Zod, React Flow, Recharts, shadcn/ui, FastAPI, Pydantic, SQLAlchemy, Alembic, Celery: MIT/BSD; PostgreSQL and pgvector: PostgreSQL license; Keycloak, Caddy, Prometheus, SeaweedFS, Playwright: Apache-2.0; RabbitMQ: MPL-2.0; Inter: SIL OFL). **Grafana OSS is AGPL-3.0**, so have legal review it. Re-check versions when you pin them. This repository does not yet declare its own license.
-
----
-
-# Status & limitations
-
-| Area | State |
-|---|---|
-| Back-office (cockpit, journeys, detail, validation, designer, analytics) | Working, verified in a browser and by e2e tests |
-| Patient mobile space | Working (document "upload" is a confirmation, no file transfer) |
-| AI layer (provider, RAG, four agents, validation, cost tracking) | Implemented and tested with mocks and a fake client; **never run against the real OpenAI API** |
-| Postgres + pgvector, Keycloak realm, migrations | Verified locally with Docker |
-| Compose `api`, `worker`, Caddy, Prometheus, Grafana, SeaweedFS, RabbitMQ | Written, **not started or tested** |
-| Sidebar pages *Tasks, Communications, Reports, Team, Journey models, Settings* | Placeholders ("coming soon") |
-| "New journey" / "Export" buttons | Not wired in the UI (journey creation exists in the API) |
-| Hosted deployment | Not live yet |
-
-Design source: the *CarePilot Design System v1.0* board (tokens, components, three reference screens).
+The codebase currently has **no project license**; do not assume redistribution rights. Components use their own licenses (including MIT, Apache-2.0, PostgreSQL License and Grafana OSS AGPL-3.0); fonts use SIL OFL. Re-audit exact deployed versions and obligations before distribution. See [architecture notes](docs/architecture.md).
