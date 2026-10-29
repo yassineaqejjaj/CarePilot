@@ -1,0 +1,10 @@
+.tour-illustration { background: radial-gradient(ellipse at top left, #bdece0, transparent 65%), linear-gradient(135deg,#edf9f5,#e6eefb); }
+.tour-scene { animation: tour-arrive 260ms ease-out both; }
+.tour-example { animation: tour-arrive 380ms ease-out both; }
+.tour-item { animation: tour-item 320ms ease-out both; }
+@keyframes tour-arrive { from { opacity: .3; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes tour-item { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
+.tour h2:focus { outline: none; box-shadow: none; }
+@media(prefers-reduced-motion:reduce) { .tour-scene,.tour-example,.tour-item { animation: none; transform: none; } }
+@media(max-width:639px) { .tour-controls { bottom: calc(76px + env(safe-area-inset-bottom)); } .tour-steps { scroll-snap-type: x proximity; } .tour-steps button { scroll-snap-align: start; } }
+@media(max-width:639px) { .tour[data-started="true"] .tour-intro { display:none; } }

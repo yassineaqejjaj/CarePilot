@@ -1,3 +1,4 @@
+import OnboardingInvite from "@/components/OnboardingInvite";
 import {
   DisplayProvider,
   DisplayControls,
@@ -7,10 +8,12 @@ import {
 import { lazy, Suspense, useState } from "react";
 import {
   NavLink,
+  Link,
   Navigate,
   Route,
   Routes,
   useNavigate,
+  useLocation,
   useSearchParams,
 } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -59,6 +62,7 @@ const Catalogue = lazy(() => import("@/pages/Catalogue"));
 const Designer = lazy(() => import("@/pages/Designer"));
 const Analytics = lazy(() => import("@/pages/Analytics"));
 const Copilot = lazy(() => import("@/pages/Copilot"));
+const Onboarding = lazy(() => import("@/pages/Onboarding"));
 const GuidedDemo = lazy(() => import("@/pages/GuidedDemo"));
 const Procedures = lazy(() => import("@/pages/Procedures"));
 
@@ -156,7 +160,10 @@ function Sidebar({
       : []),
     {
       title: "Aide",
-      items: [{ to: "/demo", label: "Démo guidée", icon: ic(HelpCircle) }],
+      items: [
+        { to: "/visite-guidee", label: "Visite guidée", icon: ic(HelpCircle) },
+        { to: "/demo", label: "Démo guidée", icon: ic(HelpCircle) },
+      ],
     },
   ];
   return (
@@ -252,7 +259,23 @@ function Topbar({
   multiSite: boolean;
 }) {
   const nav = useNavigate();
+  const onTour = useLocation().pathname === "/visite-guidee";
   const [q, setQ] = useState("");
+  if (onTour)
+    return (
+      <header className="glass-toolbar sticky top-0 z-10 flex min-h-14 items-center justify-between gap-3 border-b border-line px-4 py-2 sm:px-6">
+        <span className="flex items-center gap-2 font-semibold text-teal-800">
+          <HelpCircle size={18} />
+          Visite guidée
+        </span>
+        <Link
+          to="/app"
+          className="inline-flex min-h-11 items-center rounded-ctl px-3 font-semibold text-teal-700"
+        >
+          Revenir à mon espace
+        </Link>
+      </header>
+    );
   return (
     <header className="glass-toolbar sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-line px-3 py-3 sm:px-6">
       <div className="flex items-center gap-2.5 rounded-card border border-line bg-white px-3 py-1.5">
@@ -295,6 +318,13 @@ function Topbar({
           placeholder="Rechercher un patient, un parcours, un identifiant…"
         />
       </form>
+      <Link
+        to="/visite-guidee"
+        className="inline-flex min-h-11 items-center gap-2 rounded-ctl px-3 font-semibold text-teal-700"
+      >
+        <HelpCircle size={16} />
+        Visite guidée
+      </Link>
       <DisplayControls />
       <button
         aria-label="Notifications"
@@ -478,6 +508,7 @@ function StaffApp() {
                     ["/parametres", "Paramètres"],
                   ]
                 : []),
+              ["/visite-guidee", "Aide · Visite guidée"],
               ["/demo", "Aide · Démo guidée"],
             ].map(([to, label]) => (
               <NavLink
@@ -491,6 +522,7 @@ function StaffApp() {
           </nav>
         )}
         <main className="mx-auto max-w-[1180px] px-4 py-6 pb-28 sm:px-6 lg:pb-6">
+          <OnboardingInvite />
           <Suspense
             fallback={
               <p role="status" className="p-6 text-ink-2">
@@ -554,6 +586,7 @@ function StaffApp() {
                   <Navigate to="/automatisations?onglet=copilote" replace />
                 }
               />
+              <Route path="/visite-guidee" element={<Onboarding />} />
               <Route path="/demo" element={<GuidedDemo />} />
               <Route path="/procedures" element={<Procedures />} />
               <Route path="/modeles" element={<Catalogue />} />

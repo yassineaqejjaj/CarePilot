@@ -88,6 +88,24 @@ npx vercel deploy --prebuilt --prod
 
 The packager reads the backend destination from `apps/web/vercel.json` and copies only the generated public `dist` files into ignored `.vercel/output`. It never reads provider keys or patient records. After publication, verify `/`, `/app`, `/operations`, a static asset and an authenticated API call; a deployment marked Ready alone is not sufficient validation.
 
+## Replayable animated onboarding
+
+Open **Aide → Visite guidée**, use **Visite guidée** in the staff header, or visit `/visite-guidee`. A dismissible first-use invitation offers the same entry point. The tour remains available after completion or dismissal, including through **Plus** on mobile.
+
+Follow Amal’s fictional ambulatory-surgery journey through **13 steps, from J−21 to J+7**: overview, pathway selection, dossier creation, team assignment, invitation, patient portal, document receipt, human review, insurance/administrative amounts, approved reminders, arrival, administrative closure and pilot results.
+
+- Animated illustrative scenes, direct step selection, **Précédent / Suivant**, optional eight-second autoplay, pause, Escape to pause, restart and exit.
+- Progress is saved locally per signed-in identity and tour version. Returning starts at the introduction with a **Reprendre** option; browser storage failures do not prevent the tour. Progress is a browser preference, not a training certification or an account-wide record.
+- Reduced-motion preferences disable the scene animations and autoplay; all content remains available through manual navigation. Mobile uses horizontally scrollable step selection and accessible bottom controls.
+- **The tour creates no dossier, uploads no file, sends no message and calls no AI provider.** All names, documents, statuses and amounts inside the tour are illustrative. Normal authenticated shell read requests still occur.
+- The existing **Démo guidée** is separate: its explicitly launched scenario creates a fictional dossier and demonstrates real sample upload and human validation. The animated tour explains this distinction before linking to it.
+
+![Animated patient-journey tour](docs/screenshots/30-onboarding-desktop.png)
+
+<img src="docs/screenshots/31-onboarding-mobile.png" alt="Mobile onboarding with manual navigation and reduced-motion support" width="300" />
+
+Implementation: lazy-loaded `apps/web/src/pages/Onboarding.tsx`, scoped `onboarding.css`, a small first-use invitation and versioned local progress metadata. No new dependency or database migration. The frontend build and **16 local browser checks** passed, including all 13 steps without API mutations, replay/resume, pause, dismissal, mobile/reduced-motion behavior, and navigation/UX regressions.
+
 ## Faster daily work — UX update
 
 The interface now helps a coordinator move from an actionable queue to the right part of a dossier, with fewer intermediate steps.
