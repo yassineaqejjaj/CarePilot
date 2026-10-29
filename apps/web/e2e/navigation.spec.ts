@@ -173,9 +173,10 @@ test("overview and dossier screenshots reflect the new navigation", async ({
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await login(page, STAFF);
+  await page.evaluate(()=>localStorage.setItem("m3aya-display",JSON.stringify({hideTechnical:true})));
   await page.goto("/vue-ensemble");
   await expect(
-    page.getByRole("button", { name: "Nouveau parcours", exact: true }),
+    page.getByRole("button", { name: "Nouveau dossier", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText("Clinique Atlas · Casablanca").first(),

@@ -225,8 +225,8 @@ test("nouveau parcours : consentement d'information obligatoire, puis import CSV
   page,
 }) => {
   await login(page, STAFF);
-  await page.getByRole("button", { name: "Nouveau parcours" }).click();
-  const dialog = page.getByRole("dialog", { name: "Nouveau parcours" });
+  await page.getByRole("button", { name: "Nouveau dossier" }).click();
+  const dialog = page.getByRole("dialog", { name: "Nouveau dossier" });
   await dialog.getByLabel("Prénom").fill("Imad");
   await dialog.getByLabel("Nom", { exact: true }).fill("Test-E2E");
   await dialog.getByLabel("Date de naissance").fill("05/06/1980");
@@ -236,16 +236,16 @@ test("nouveau parcours : consentement d'information obligatoire, puis import CSV
     .fill("Cataracte");
   await dialog.getByLabel(/Date d.intervention/).fill("30/12/2030");
   await expect(
-    dialog.getByRole("button", { name: "Créer le parcours" }),
+    dialog.getByRole("button", { name: "Créer le dossier" }),
   ).toBeDisabled(); // patient non informé
   await dialog.getByRole("checkbox").check();
-  await dialog.getByRole("button", { name: "Créer le parcours" }).click();
+  await dialog.getByRole("button", { name: "Créer le dossier" }).click();
   await expect(
     page.getByRole("heading", { name: "Imad Test-E2E" }),
   ).toBeVisible();
   // import CSV : simulation puis import
   await page.getByRole("link", { name: "Dossiers patients" }).first().click();
-  await page.getByRole("button", { name: "Nouveau parcours" }).click();
+  await page.getByRole("button", { name: "Nouveau dossier" }).click();
   await page.getByRole("tab", { name: "Import CSV" }).click();
   const csv =
     "first_name;last_name;birth_date;phone;surgery_date;procedure\nSara;CsvE2E;01/02/1991;0661234567;30/12/2030;Hernie\nBad;Row;;pas-un-numero;30/12/2030;X\n";

@@ -88,6 +88,42 @@ npx vercel deploy --prebuilt --prod
 
 The packager reads the backend destination from `apps/web/vercel.json` and copies only the generated public `dist` files into ignored `.vercel/output`. It never reads provider keys or patient records. After publication, verify `/`, `/app`, `/operations`, a static asset and an authenticated API call; a deployment marked Ready alone is not sufficient validation.
 
+## Faster daily work — UX update
+
+The interface now helps a coordinator move from an actionable queue to the right part of a dossier, with fewer intermediate steps.
+
+| Improvement | Available behavior |
+|---|---|
+| Focused dashboard | Three primary indicators: tasks due today or overdue, active dossiers with unvalidated document steps, and task deadlines from today through three days ahead. Secondary establishment metrics are expandable. Calendar-day windows are not represented as exact rolling 72-hour measurements. |
+| Clear counter units | Work-queue tabs count distinct dossiers, while summary cards count received pieces or insurance requests. One dossier can belong to several tabs. The scope explanation is available under **Comprendre les compteurs**. Search and date filters affect the list; counters follow the personal/presentation scope. |
+| Contextual actions | **Vérifier les pièces**, **Lire la réponse**, **Suivre l’assurance**, **Répondre à la demande** and **Vérifier les coordonnées** lead directly to the relevant dossier section. |
+| Dedicated dossier sections | Insurance, finance, communications, help, coordination and history have separate visible views. Patient context and section navigation remain available; keyboard focus stays within the panel and closing restores background scrolling. |
+| Useful work views | Personal/unassigned dossiers, tomorrow’s scheduled admissions, pending insurance, name search, date windows and sorting by deadline/patient/owner. Active filter chips and **Effacer les filtres** make the current selection explicit. |
+| Saved filters | Save up to five local workflow views per identity/selected site. Only scope, work category, action/date filters and sort choice are stored: patient-name searches are never saved in a view. Browser storage can be unavailable without preventing core work. |
+| Configurable reading | **Affichage** offers comfortable/compact table density, an icon sidebar with accessible labels, and an optional demo filter for technical test names. The dossier table also remembers optional stage/progress/owner columns. |
+| Mobile workspace | A fixed bottom dock, dossier cards instead of wide desktop tables, horizontally scrollable work categories, collapsible filters, and accessible section navigation. Mobile controls have a 44 px minimum height; administrative form actions stay reachable inside their panel. |
+| Consistent language | **Nouveau dossier** creates an individual patient dossier; pathway templates remain in **Bibliothèque de parcours**. General-purpose lists use **Prise en charge**, and priority labels explain administrative follow-up rather than implying medical triage. |
+| Presentation without deletion | The optional **Masquer les tests techniques (démo)** preference filters obvious technical names from lists. Existing records, underlying establishment metrics and authorization rules are retained. Screenshots use this presentation preference where useful. |
+
+![Focused operational overview](docs/screenshots/01-cockpit.png)
+
+<img src="docs/screenshots/29-worklist-mobile.png" alt="Mobile worklist with bottom navigation and actionable dossier cards" width="300" />
+
+### Implementation and validation
+
+Shared display preferences are implemented in `apps/web/src/lib/display.tsx`; workflow filters remain in the operations page and column preferences in the dossier table. Settings contain UI metadata only. They are local to the browser, not a cross-device account configuration. No migration, patient-data reset, messaging-provider change or new dependency is required for this update. The frosted-material accessibility fallbacks remain active.
+
+For this UX update, **29 local browser scenarios passed** across the application, catalogue, operations, navigation and UX suites; the production frontend build also passed. Browser scenarios in `apps/web/e2e/ux.spec.ts` cover filter persistence without patient-search storage, direct document actions, independent insurance/finance views, display preferences, optional columns, the mobile dock and dashboard hierarchy. Run browser tests directly, without the demo-reset script:
+
+```sh
+cd apps/web
+npx playwright test e2e/ux.spec.ts e2e/navigation.spec.ts e2e/operations.spec.ts
+```
+
+### Clinic usability validation to conduct
+
+Automated checks do not replace observation in a clinic. With a receptionist, coordinator and manager, test three tasks: find a dossier, review a submitted piece, and identify the next administrative blocker. Record completion time, errors, requests for assistance and participant comments. Compare the same tasks before and after changes; no user-study results or measured productivity gains are claimed here.
+
 ## Frosted interface materials
 
 The staff workspace and patient portal use a restrained glassmorphism treatment: a static mint/blue backdrop, translucent cards and navigation, fine highlight borders and soft depth. Dialogs and administrative side panels use a denser material; nested cards, data tables and form fields retain stable reading surfaces. Status colors remain unchanged.
@@ -108,11 +144,11 @@ The staff menu now separates everyday work, pathway configuration, pilot measure
 
 **Start with À traiter:** document review, insurance follow-up, patient replies, help/contact requests and pending human approvals have their own filters. Counters come from current dossiers; the sidebar counts actionable dossiers assigned to the current user or unassigned (all actionable dossiers for administrators), rather than all active patients. Coordinators start here automatically and can expand their view to the entire authorized establishment. All tasks and deadlines remain available from this screen.
 
-**Open a dossier:** Résumé, Documents, Assurance, Finances, Communications and Historique keep the same patient context. Insurance, finance and communication actions open the administrative side panel at the selected section. The contextual assistant button opens the dossier’s existing blockers and human-reviewed proposals; it does not introduce an autonomous action or send patient details to a new AI service.
+**Open a dossier:** Résumé, Documents, Assurance, Finances, Communications and Historique keep the same patient context. Insurance, finance and communication actions open an independent section in the administrative side panel. Unrelated forms stay hidden; their in-progress values are preserved when switching sections. The contextual assistant button opens the dossier’s existing blockers and human-reviewed proposals; it does not introduce an autonomous action or send patient details to a new AI service.
 
 **Automatisations** combines agent monitoring and the action copilot. **Résultats du pilote** starts with observed baseline/pilot measurements and links separately to activity statistics and estimates. Pilot setup remains under Paramètres. `/app` opens the overview for administrators and other staff, or À traiter for coordinators. These navigation choices supplement backend authorization; hiding a menu never grants or revokes API permissions.
 
-**On mobile:** Accueil · À traiter · Dossiers · Messages · Plus. The Plus panel exposes the remaining authorized destinations and closes after selection. Patient and companion portals retain their separate navigation.
+**On mobile:** a fixed bottom dock provides Accueil · À traiter · Dossiers · Messages · Plus. The Plus panel exposes the remaining authorized destinations and closes after selection. Patient and companion portals retain their separate navigation.
 
 ![Staff navigation and actionable worklist](docs/screenshots/27-navigation-desktop.png)
 
@@ -223,7 +259,7 @@ The priority queue ranks journeys by deadline and missing blocking documents. Co
 
 ### Patient journey detail
 
-See intervention details, coordinator, dated milestones, expected documents, recent activity and the next proposal awaiting approval. The **Send patient link** button creates a time-limited invitation.
+See intervention details, coordinator, dated milestones, expected documents, recent activity and the next proposal awaiting approval. The **Envoyer le lien patient** button creates a time-limited invitation.
 
 ![Patient journey detail](docs/screenshots/02-journey-detail.png)
 

@@ -48,7 +48,7 @@ test("staff can prepare insurance and an exact MAD estimate on a fictitious doss
   await page.setViewportSize({ width: 1440, height: 960 });
   const call = await staff(page);
   const j = await example(call);
-  await page.goto("/operations?dossier=" + j.id);
+  await page.goto("/operations?section=assurance&dossier=" + j.id);
   const dialog = page.getByRole("dialog", { name: "Dossier administratif" });
   await expect(
     dialog.getByRole("heading", { name: /dossier administratif/ }),
@@ -63,6 +63,7 @@ test("staff can prepare insurance and an exact MAD estimate on a fictitious doss
   ).toBeVisible();
   await dialog.getByRole("button", { name: "Confirmer l’état reçu" }).click();
   await expect(dialog.getByText("Transmis", { exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "Finances", exact: true }).click();
   await dialog.getByLabel("Montant en MAD").fill("1000.01");
   await dialog.getByLabel("Référence du justificatif").fill("DEVIS-DEMO");
   await dialog.getByText("J’ai vérifié le justificatif.").click();
@@ -112,7 +113,7 @@ test("new journey saves an encrypted draft and resumes without creating a patien
   await staff(page);
   await page.goto("/app");
   await page
-    .getByRole("button", { name: "Nouveau parcours", exact: true })
+    .getByRole("button", { name: "Nouveau dossier", exact: true })
     .click();
   await page.getByLabel("Prénom", { exact: true }).fill("Brouillon fictif");
   await expect(
@@ -122,7 +123,7 @@ test("new journey saves an encrypted draft and resumes without creating a patien
   ).toBeVisible();
   await page.getByRole("button", { name: "Fermer", exact: true }).click();
   await page
-    .getByRole("button", { name: "Nouveau parcours", exact: true })
+    .getByRole("button", { name: "Nouveau dossier", exact: true })
     .click();
   await expect(page.getByLabel("Prénom", { exact: true })).toHaveValue(
     "Brouillon fictif",
@@ -190,7 +191,9 @@ test("patient can ask for help and grant then revoke a limited companion session
   await p.getByRole("button", { name: "Masquer", exact: true }).click();
   await p.getByRole("button", { name: "Révoquer cet accès" }).click();
   await c.reload();
-  await expect(c.getByRole("button",{name:"Retour au site",exact:true})).toBeVisible();
+  await expect(
+    c.getByRole("button", { name: "Retour au site", exact: true }),
+  ).toBeVisible();
   await expect(c.getByText("Espace accompagnant · accès limité")).toHaveCount(
     0,
   );

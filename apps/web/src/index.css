@@ -96,3 +96,26 @@
     box-shadow: none !important;
   }
 }
+
+/* Comfortable touch targets and predictable presentation density. */
+.mobile-primary { padding-bottom: max(.5rem, env(safe-area-inset-bottom)); }
+.mobile-primary a, .mobile-primary button { min-height: 44px; display: inline-flex; align-items: center; }
+.mobile-primary a[aria-current="page"] { background: #e0f4ee; color: #0e5e5b; font-weight: 650; }
+.glass-app input[type="checkbox"] { width: 18px; height: 18px; accent-color: #127572; flex-shrink: 0; }
+.glass-app summary:focus-visible { outline: 2px solid #127572; outline-offset: 3px; }
+.glass-app table th { font-weight: 650; }
+.glass-app table td strong { font-weight: 650; }
+[data-density="compact"] table td { padding-top: .5rem; padding-bottom: .5rem; }
+[data-density="compact"] table .text-meta { font-size: 12px; }
+.case-panel [id^="case-"] { scroll-margin-top: 160px; }
+.case-panel [aria-label="Rubriques du dossier"] a, .case-panel [aria-label="Rubriques du dossier"] button { min-height: 44px; }
+@media(max-width: 767px) {
+  .case-panel { padding: .75rem; }
+  .case-panel form > button:last-child { position: sticky; bottom: .5rem; z-index: 2; min-height: 48px; box-shadow: 0 0 0 5px #fbfdfd; }
+}
+@media(max-width: 767px) {
+  .glass-app button, .glass-portal button { min-height: 44px; }
+}
+.glass-app [role="tab"], .glass-app nav[aria-label="Rubriques du dossier"] > a, .glass-app nav[aria-label="Rubriques du dossier"] > button { border-radius: 10px; min-height: 44px; }
+.glass-app [role="tab"][aria-selected="true"], .glass-app nav[aria-label="Rubriques du dossier"] [aria-pressed="true"] { border-color: #127572; background-color: #e0f4ee; color: #0e5e5b; font-weight: 650; }
+.case-panel { overscroll-behavior: contain; }

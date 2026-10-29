@@ -55,9 +55,9 @@ export default function NewJourney({ onClose, initialTemplateId }: { onClose: ()
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4" role="dialog" aria-modal="true" aria-label="Nouveau parcours">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4" role="dialog" aria-modal="true" aria-label="Nouveau dossier">
       <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto glass-sheet rounded-panel p-6">
-        <div className="flex items-start justify-between"><h2 className="text-lg font-semibold">Nouveau parcours</h2><button aria-label="Fermer" onClick={()=>close()} className="text-ink-2">✕</button></div>
+        <div className="flex items-start justify-between"><h2 className="text-lg font-semibold">Nouveau dossier</h2><button aria-label="Fermer" onClick={()=>close()} className="text-ink-2">✕</button></div>
         <div className="mt-3 flex gap-2" role="tablist">
           {([["manual", "Saisie manuelle"], ["csv", "Import CSV"]] as const).map(([k, l]) => (
             <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setErr(""); }}
@@ -91,7 +91,7 @@ export default function NewJourney({ onClose, initialTemplateId }: { onClose: ()
             <label className="flex items-start gap-2 md:col-span-2"><input type="checkbox" className="mt-1" checked={f.informed} onChange={(e) => setF({ ...f, informed: e.target.checked })} />
               <span>Le patient a été informé du traitement de ses données (finalité, destinataires, droits d'accès, de rectification et d'opposition — loi 09-08, art. 5).</span></label>
             {err && <p role="alert" className="rounded-ctl bg-critical-bg p-3 text-critical-text md:col-span-2">{err}</p>}
-            <div className="flex justify-end gap-2 md:col-span-2"><Button type="button" variant="secondary" onClick={()=>close()}>Annuler</Button><Button disabled={!f.informed || !f.template_id || create.isPending}>{create.isPending ? "Création…" : "Créer le parcours"}</Button></div>
+            <div className="flex justify-end gap-2 md:col-span-2"><Button type="button" variant="secondary" onClick={()=>close()}>Annuler</Button><Button disabled={!f.informed || !f.template_id || create.isPending}>{create.isPending ? "Création…" : "Créer le dossier"}</Button></div>
             </fieldset>
           </form>
         ) : (

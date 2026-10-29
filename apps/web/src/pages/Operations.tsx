@@ -1,5 +1,6 @@
+import { useDisplay, technicalExample } from "@/lib/display";
 import { useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowUpRight,
@@ -198,8 +199,41 @@ type Metrics = {
   }[];
   definition: string;
 };
+const dayKey = (offset = 0) => {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+const showDate = (date: string | null) =>
+  date
+    ? new Date(date + "T12:00:00").toLocaleDateString("fr-FR")
+    : "Sans échéance";
+function rowAction(r: Row) {
+  if (r.help_pending)
+    return { label: "Répondre à la demande", section: "aide" };
+  if (r.profile_pending)
+    return { label: "Vérifier les coordonnées", section: "historique" };
+  if (r.unread) return { label: "Lire la réponse", section: "communications" };
+  if (r.submitted)
+    return { label: "Vérifier les pièces", section: "documents" };
+  if (r.insurance_pending)
+    return { label: "Suivre l’assurance", section: "assurance" };
+  return {
+    label: r.missing ? "Voir les pièces manquantes" : "Examiner le dossier",
+    section: r.missing ? "documents" : "coordination",
+  };
+}
+type SavedView = {
+  category?: string;
+  personal: boolean;
+  actions: boolean;
+  window: "all" | "tomorrow" | "today";
+  sort: "due" | "patient" | "owner";
+};
 const fd = (f: HTMLFormElement) => Object.fromEntries(new FormData(f));
 export default function Operations({ mode }: { mode?: string }) {
+  const { hideTechnical } = useDisplay();
+  const navigate = useNavigate();
   const qc = useQueryClient(),
     toast = useToast();
   const [params, setParams] = useSearchParams();
@@ -227,6 +261,89 @@ export default function Operations({ mode }: { mode?: string }) {
   const [personal, setPersonal] = useState(
     !roles().includes("admin") && roles().includes("coordinator"),
   );
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedView, setSelectedView] = useState("");
+  const [dateWindow, setDateWindow] = useState<SavedView["window"]>("all");
+  const [sort, setSort] = useState<SavedView["sort"]>("due");
+  const viewKey =
+    "m3aya-views:" +
+    subject() +
+    ":" +
+    (sessionStorage.getItem("m3aya_site") ?? "primary");
+  const [saved, setSaved] = useState<SavedView[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(viewKey) ?? "[]")
+        .filter(
+          (x: SavedView) =>
+            ["all", "tomorrow", "today"].includes(x.window) &&
+            ["due", "patient", "owner"].includes(x.sort) &&
+            (!x.category ||
+              ["documents", "assurances", "reponses", "aide"].includes(
+                x.category,
+              )),
+        )
+        .slice(0, 5);
+    } catch {
+      return [];
+    }
+  });
+  function saveView() {
+    const next = [
+      ...saved,
+      {
+        personal,
+        actions: mine,
+        window: dateWindow,
+        sort,
+        category: ["documents", "assurances", "reponses", "aide"].includes(
+          params.get("onglet") ?? "",
+        )
+          ? params.get("onglet")!
+          : "",
+      },
+    ].slice(-5);
+    try {
+      localStorage.setItem(viewKey, JSON.stringify(next));
+      setSaved(next);
+      setSelectedView("saved-" + (next.length - 1));
+      toast({
+        tone: "success",
+        title: "Vue enregistrée",
+        text: "La recherche nominative n’est pas mémorisée.",
+      });
+    } catch {
+      toast({ tone: "warning", title: "Stockage local indisponible" });
+    }
+  }
+  function resetFilters() {
+    setSelectedView("");
+    setSearch("");
+    setMine(false);
+    setPersonal(false);
+    setDateWindow("all");
+    setSort("due");
+    setParams({});
+  }
+  function applyView(value: string) {
+    setSelectedView(value);
+    if (value.startsWith("saved-")) {
+      const v = saved[Number(value.slice(6))];
+      if (v) {
+        setPersonal(v.personal);
+        setMine(v.actions);
+        setDateWindow(v.window);
+        setSort(v.sort);
+        setParams(v.category ? { onglet: v.category } : {});
+      }
+    } else {
+      setSort("due");
+      setPersonal(value === "mine");
+      setMine(value !== "all");
+      setDateWindow(value === "tomorrow" ? "tomorrow" : "all");
+      setParams(value === "insurance" ? { onglet: "assurances" } : {});
+    }
+    setSearch("");
+  }
   const [search, setSearch] = useState(""),
     [mine, setMine] = useState(false),
     [busy, setBusy] = useState(false),
@@ -235,6 +352,8 @@ export default function Operations({ mode }: { mode?: string }) {
   useEffect(() => {
     if (!selected) return;
     const previous = document.activeElement as HTMLElement | null;
+    const oldOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const root = document.querySelector<HTMLElement>(
       '[role="dialog"][aria-label="Dossier administratif"]',
     );
@@ -250,8 +369,9 @@ export default function Operations({ mode }: { mode?: string }) {
             "button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled])",
           ),
         );
-        const first = elements[0],
-          last = elements[elements.length - 1];
+        const visible = elements.filter((el) => el.getClientRects().length > 0);
+        const first = visible[0],
+          last = visible[visible.length - 1];
         if (e.shiftKey && document.activeElement === first) {
           e.preventDefault();
           last?.focus();
@@ -264,6 +384,7 @@ export default function Operations({ mode }: { mode?: string }) {
     document.addEventListener("keydown", handler);
     return () => {
       document.removeEventListener("keydown", handler);
+      document.body.style.overflow = oldOverflow;
       previous?.focus();
     };
   }, [selected]);
@@ -355,7 +476,9 @@ export default function Operations({ mode }: { mode?: string }) {
     }
   }
   const scoped = (q.data?.items ?? []).filter(
-    (r) => !personal || !r.assigned_subject || r.assigned_subject === subject(),
+    (r) =>
+      (!personal || !r.assigned_subject || r.assigned_subject === subject()) &&
+      (!hideTechnical || !technicalExample(r.patient)),
   );
   const visibleItems = q.data ? scoped : undefined;
   const rows = scoped.filter(
@@ -363,6 +486,10 @@ export default function Operations({ mode }: { mode?: string }) {
       (r.patient + " " + r.reference + " " + r.owner)
         .toLowerCase()
         .includes(search.toLowerCase()) &&
+      (dateWindow === "all" ||
+        (dateWindow === "tomorrow"
+          ? r.date === dayKey(1)
+          : !!r.due_date && r.due_date <= dayKey())) &&
       (!mine ||
         r.submitted > 0 ||
         r.insurance_pending > 0 ||
@@ -376,8 +503,39 @@ export default function Operations({ mode }: { mode?: string }) {
         r.help_pending > 0 ||
         r.profile_pending > 0),
   );
+  rows.sort((a, b) =>
+    sort === "patient"
+      ? a.patient.localeCompare(b.patient, "fr")
+      : sort === "owner"
+        ? a.owner.localeCompare(b.owner, "fr")
+        : (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999") ||
+          a.patient.localeCompare(b.patient, "fr"),
+  );
+  const openRow = (r: Row) => {
+    const action = rowAction(r);
+    if (action.section === "documents")
+      navigate(`/parcours/${r.id}?onglet=documents`);
+    else
+      setParams((previous) => {
+        const next = new URLSearchParams(previous);
+        next.set("dossier", r.id);
+        next.set("section", action.section);
+        return next;
+      });
+  };
+  const activeFilters =
+    !!search || mine || personal || dateWindow !== "all" || sort !== "due";
   const d = detail.data;
-  const section = params.get("section");
+  const section = [
+    "assurance",
+    "finances",
+    "communications",
+    "historique",
+    "coordination",
+    "aide",
+  ].includes(params.get("section") ?? "")
+    ? params.get("section")!
+    : "coordination";
   useEffect(() => {
     if (d && section) {
       const target = document.getElementById("case-" + section);
@@ -402,7 +560,7 @@ export default function Operations({ mode }: { mode?: string }) {
         </p>
       </div>
       <div
-        className="flex flex-wrap gap-2"
+        className="flex gap-2 overflow-x-auto whitespace-nowrap pb-2 md:flex-wrap"
         role="tablist"
         aria-label={mode ?? "À traiter"}
       >
@@ -455,7 +613,8 @@ export default function Operations({ mode }: { mode?: string }) {
                             ? r.unread > 0
                             : r.help_pending > 0 || r.profile_pending > 0,
                     ).length
-                  }
+                  }{" "}
+                  dossiers
                 </span>
               )}
           </button>
@@ -481,10 +640,17 @@ export default function Operations({ mode }: { mode?: string }) {
         </Link>
       )}
       {!mode && (
-        <p className="text-meta text-ink-2">
-          Les listes présentent les actions de votre établissement. Filtrez par
-          nom ou responsable pour organiser votre travail.
-        </p>
+        <details className="text-meta text-ink-2">
+          <summary className="cursor-pointer py-2">
+            Comprendre les compteurs
+          </summary>
+          <p className="mt-2">
+            Chaque onglet compte des dossiers distincts : un dossier peut
+            apparaître dans plusieurs onglets. Les cartes comptent les pièces ou
+            demandes. Les compteurs suivent le périmètre personnel ; la
+            recherche et la période filtrent la liste.
+          </p>
+        </details>
       )}
       {[
         "Dossiers",
@@ -494,14 +660,14 @@ export default function Operations({ mode }: { mode?: string }) {
         "Demandes d’aide",
       ].includes(tab) && (
         <>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="hidden gap-3 md:grid md:grid-cols-3">
             {[
               [
                 "Documents à vérifier",
                 visibleItems?.reduce((n, r) => n + r.submitted, 0),
               ],
               [
-                "Demandes assurance à suivre",
+                "Demandes d’assurance à suivre",
                 visibleItems?.reduce((n, r) => n + r.insurance_pending, 0),
               ],
               [
@@ -515,113 +681,286 @@ export default function Operations({ mode }: { mode?: string }) {
               </Card>
             ))}
           </div>
-          <div className="flex flex-wrap gap-4">
-            <label className="flex-1">
-              Rechercher un dossier
-              <input
-                className={input}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Nom, référence, responsable"
-              />
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={mine}
-                onChange={(e) => setMine(e.target.checked)}
-              />
-              À traiter par l’équipe
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={personal}
-                onChange={(e) => setPersonal(e.target.checked)}
-              />
-              Mes dossiers et ceux sans responsable
-            </label>
+          <Button
+            variant="secondary"
+            className="w-full md:hidden"
+            aria-expanded={showFilters}
+            aria-controls="worklist-filters"
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            Rechercher et filtrer{activeFilters ? " · filtres actifs" : ""}
+          </Button>
+          <div
+            id="worklist-filters"
+            className={showFilters ? "space-y-3" : "hidden space-y-3 md:block"}
+          >
+            <div className="flex flex-wrap items-end gap-3 rounded-card border border-line p-3">
+              <label className="min-w-40">
+                Vues de travail
+                <select
+                  aria-label="Vues de travail"
+                  className={input}
+                  value={selectedView}
+                  onChange={(e) => applyView(e.target.value)}
+                >
+                  <option value="" disabled>
+                    Choisir une vue
+                  </option>
+                  <option value="all">Tout l’établissement</option>
+                  <option value="mine">Mes dossiers à traiter</option>
+                  <option value="tomorrow">Prises en charge demain</option>
+                  <option value="insurance">Assurances en attente</option>
+                  {saved.map((v, i) => (
+                    <option key={i} value={"saved-" + i}>
+                      {`Vue ${i + 1} · ${v.category ? tabs[v.category] : v.personal ? "Mes dossiers" : "Établissement"}${v.window === "tomorrow" ? " · Demain" : v.window === "today" ? " · À échéance" : ""}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Période
+                <select
+                  aria-label="Période de la liste"
+                  className={input}
+                  value={dateWindow}
+                  onChange={(e) => {
+                    setSelectedView("");
+                    setDateWindow(e.target.value as SavedView["window"]);
+                  }}
+                >
+                  <option value="all">Toutes les dates</option>
+                  <option value="today">
+                    Échéance au plus tard aujourd’hui
+                  </option>
+                  <option value="tomorrow">Prise en charge demain</option>
+                </select>
+              </label>
+              <label>
+                Trier par
+                <select
+                  aria-label="Trier la liste"
+                  className={input}
+                  value={sort}
+                  onChange={(e) => {
+                    setSelectedView("");
+                    setSort(e.target.value as SavedView["sort"]);
+                  }}
+                >
+                  <option value="due">Échéance la plus proche</option>
+                  <option value="patient">Nom du patient</option>
+                  <option value="owner">Responsable</option>
+                </select>
+              </label>
+              <Button variant="secondary" onClick={saveView}>
+                Enregistrer cette vue
+              </Button>
+              {saved.length > 0 && (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    try {
+                      localStorage.removeItem(viewKey);
+                    } catch {}
+                    setSaved([]);
+                    setSelectedView("");
+                  }}
+                >
+                  Effacer mes vues
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <label className="flex-1">
+                Rechercher un dossier
+                <input
+                  className={input}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Nom, référence, responsable"
+                />
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={mine}
+                  onChange={(e) => {
+                    setSelectedView("");
+                    setMine(e.target.checked);
+                  }}
+                />
+                À traiter par l’équipe
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={personal}
+                  onChange={(e) => {
+                    setSelectedView("");
+                    setPersonal(e.target.checked);
+                  }}
+                />
+                Mes dossiers et ceux sans responsable
+              </label>
+            </div>
           </div>
+          {activeFilters && (
+            <div
+              className="flex flex-wrap items-center gap-2 text-meta"
+              aria-label="Filtres actifs"
+            >
+              <span className="font-semibold">Filtres actifs :</span>
+              {search && <Pill>Recherche</Pill>}
+              {personal && <Pill>Mes dossiers / sans responsable</Pill>}
+              {mine && <Pill>Actions en attente</Pill>}
+              {dateWindow !== "all" && (
+                <Pill>
+                  {dateWindow === "tomorrow"
+                    ? "Prise en charge demain"
+                    : "Échéance au plus tard aujourd’hui"}
+                </Pill>
+              )}
+              {sort !== "due" && (
+                <Pill>
+                  Tri : {sort === "patient" ? "patient" : "responsable"}
+                </Pill>
+              )}
+              <Button size="sm" variant="ghost" onClick={resetFilters}>
+                Effacer les filtres
+              </Button>
+            </div>
+          )}
+          <p role="status" className="text-meta text-ink-2">
+            {q.data
+              ? `${rows.length} dossier(s) affiché(s) sur ${scoped.length} dans ce périmètre`
+              : "Chargement des dossiers…"}
+          </p>
           {q.isError ? (
             <ErrorState onRetry={q.refetch} />
           ) : !q.data ? (
             <Skeleton className="h-40" />
           ) : (
-            <Card className="overflow-x-auto">
-              <table className="w-full min-w-[680px] text-left">
-                <thead className="bg-surface-2 text-meta text-ink-2">
-                  <tr>
-                    {[
-                      "Dossier",
-                      "Prochaine action",
-                      "Responsable",
-                      "Échéance",
-                      "",
-                    ].map((x) => (
-                      <th className="p-3" key={x}>
-                        {x}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r) => (
-                    <tr key={r.id} className="border-t border-line">
-                      <td className="p-3">
-                        <strong>{r.patient}</strong>
-                        <p className="text-meta text-ink-2">
-                          {r.reference} · {states[r.phase]}
-                        </p>
-                        {r.exception && (
-                          <Pill tone="warning">Situation à accompagner</Pill>
-                        )}
-                      </td>
-                      <td className="p-3">
-                        <p>
-                          {r.next_action === "Création du parcours"
-                            ? r.missing
-                              ? "Recueillir les pièces administratives"
-                              : "Vérifier les tâches restantes"
-                            : r.next_action}
-                        </p>
-                        <p className="text-meta text-ink-2">
-                          {r.missing} pièce(s) bloquante(s) · {r.submitted}{" "}
-                          reçue(s)
-                        </p>
-                      </td>
-                      <td className="p-3">
-                        {r.owner || "À affecter"}
-                        <p className="text-meta text-ink-2">
-                          {r.department}
-                          {!r.owner_available ? " · absent, réaffecter" : ""}
-                        </p>
-                      </td>
-                      <td className="p-3">{r.due_date ?? "—"}</td>
-                      <td className="p-3">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() =>
-                            setParams((previous) => {
-                              const next = new URLSearchParams(previous);
-                              next.set("dossier", r.id);
-                              return next;
-                            })
-                          }
-                        >
-                          Ouvrir
-                        </Button>
-                      </td>
+            <>
+              <div
+                className="space-y-3 md:hidden"
+                aria-label="Dossiers à traiter sur mobile"
+              >
+                {rows.map((r) => (
+                  <Card key={r.id} className="p-4">
+                    <p className="font-semibold text-base">{r.patient}</p>
+                    <p className="mt-1 text-meta text-ink-2">
+                      {r.reference} · {r.owner || "À affecter"}
+                    </p>
+                    <p className="mt-3">
+                      {r.next_action === "Création du parcours"
+                        ? "Pièces administratives à recueillir"
+                        : r.next_action}
+                    </p>
+                    <p className="mt-2 text-meta">
+                      Échéance : {showDate(r.due_date)}
+                    </p>
+                    <p className="text-meta text-ink-2">
+                      {r.missing} pièce(s) bloquante(s) · {r.submitted} reçue(s)
+                    </p>
+                    <Button
+                      className="mt-3 min-h-11 w-full"
+                      onClick={() => openRow(r)}
+                    >
+                      {rowAction(r).label}
+                    </Button>
+                  </Card>
+                ))}
+                {!rows.length && <p>Aucun dossier pour ces filtres.</p>}
+              </div>
+              <Card className="hidden overflow-x-auto md:block">
+                <table className="w-full min-w-[680px] text-left">
+                  <thead className="bg-surface-2 text-meta text-ink-2">
+                    <tr>
+                      {[
+                        "Dossier",
+                        "Prochaine action",
+                        "Responsable",
+                        "Échéance",
+                        "",
+                      ].map((x) => (
+                        <th className="p-3" key={x}>
+                          {x}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              {!rows.length && (
-                <p className="p-5 text-ink-2">
-                  Aucun dossier à afficher avec ces filtres.
-                </p>
-              )}
-            </Card>
+                  </thead>
+                  <tbody>
+                    {rows.map((r) => (
+                      <tr key={r.id} className="border-t border-line">
+                        <td className="p-3">
+                          <strong>{r.patient}</strong>
+                          <p className="text-meta text-ink-2">
+                            {r.reference} · {states[r.phase]}
+                          </p>
+                          {r.exception && (
+                            <Pill tone="warning">Situation à accompagner</Pill>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          <p>
+                            {r.next_action === "Création du parcours"
+                              ? r.missing
+                                ? "Recueillir les pièces administratives"
+                                : "Vérifier les tâches restantes"
+                              : r.next_action}
+                          </p>
+                          <p className="text-meta text-ink-2">
+                            {r.missing} pièce(s) bloquante(s) · {r.submitted}{" "}
+                            reçue(s)
+                          </p>
+                        </td>
+                        <td className="p-3">
+                          {r.owner || "À affecter"}
+                          <p className="text-meta text-ink-2">
+                            {r.department}
+                            {!r.owner_available ? " · absent, réaffecter" : ""}
+                          </p>
+                        </td>
+                        <td className="p-3">
+                          {showDate(r.due_date)}
+                          {r.due_date && (
+                            <p
+                              className={
+                                r.due_date < dayKey()
+                                  ? "mt-1 text-meta font-semibold text-critical-text"
+                                  : "mt-1 text-meta text-ink-2"
+                              }
+                            >
+                              {r.due_date < dayKey()
+                                ? "Échéance dépassée"
+                                : r.due_date === dayKey()
+                                  ? "À traiter aujourd’hui"
+                                  : "À venir"}
+                            </p>
+                          )}
+                          <span className="text-meta text-ink-2">
+                            Échéance administrative
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => openRow(r)}
+                          >
+                            {rowAction(r).label}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {!rows.length && (
+                  <p className="p-5 text-ink-2">
+                    Aucun dossier à afficher avec ces filtres.
+                  </p>
+                )}
+              </Card>
+            </>
           )}
           <p className="text-meta text-ink-2">{q.data?.scope}</p>
         </>
@@ -1114,24 +1453,23 @@ export default function Operations({ mode }: { mode?: string }) {
           aria-modal="true"
           aria-label="Dossier administratif"
         >
-          <div className="glass-sheet h-full w-full max-w-3xl overflow-y-auto p-5">
-            <div className="mb-4 flex items-center justify-between">
+          <div className="glass-sheet case-panel h-full w-full max-w-3xl overflow-y-auto p-5">
+            <div className="sticky top-0 z-10 mb-4 flex items-center justify-between gap-2 rounded-ctl bg-page p-3">
               <h2 className="text-xl font-semibold">
                 {d?.reference ?? "Chargement…"} · dossier administratif
               </h2>
-              <button
-                aria-label="Fermer le dossier"
-                onClick={() => setParams({})}
-              >
+              <button aria-label="Fermer le dossier" onClick={closeDossier}>
                 <X />
               </button>
             </div>
             <nav
               aria-label="Rubriques du dossier"
-              className="mb-4 flex flex-wrap gap-2"
+              className="sticky top-[68px] z-10 mb-4 flex flex-wrap gap-2 rounded-ctl bg-page p-2"
             >
               {[
                 ["resume", "Résumé"],
+                ["coordination", "Coordination"],
+                ["aide", "Aide"],
                 ["documents", "Documents"],
                 ["assurance", "Assurance"],
                 ["finances", "Finances"],
@@ -1150,9 +1488,19 @@ export default function Operations({ mode }: { mode?: string }) {
                   <button
                     key={key}
                     aria-pressed={section === key}
-                    className="rounded-ctl border px-3 py-2 hover:bg-mint-100"
+                    className={
+                      "min-h-11 rounded-ctl border px-3 py-2 hover:bg-mint-100 " +
+                      (section === key
+                        ? "bg-mint-100 font-semibold text-teal-800"
+                        : "")
+                    }
                     onClick={() =>
-                      setParams({ dossier: selected!, section: key })
+                      setParams((previous) => {
+                        const next = new URLSearchParams(previous);
+                        next.set("dossier", selected!);
+                        next.set("section", key);
+                        return next;
+                      })
                     }
                   >
                     {label}
@@ -1174,6 +1522,14 @@ export default function Operations({ mode }: { mode?: string }) {
               <Skeleton className="h-40" />
             ) : (
               <div className="space-y-4">
+                {section === "aide" && d.support.length === 0 && (
+                  <Card className="p-5">
+                    <h3 className="font-semibold">Demandes d’aide</h3>
+                    <p className="mt-2 text-ink-2">
+                      Aucune demande d’aide pour ce dossier.
+                    </p>
+                  </Card>
+                )}
                 <Card className="p-5">
                   <h3 className="text-lg font-semibold">{d.patient.name}</h3>
                   <p className="text-ink-2">
@@ -1193,7 +1549,7 @@ export default function Operations({ mode }: { mode?: string }) {
                   </p>
                 </Card>
                 {write && (
-                  <Card className="p-5">
+                  <Card hidden={section !== "coordination"} className="p-5">
                     <h3 className="font-semibold">
                       Affectation, transmission et situation
                     </h3>
@@ -1281,7 +1637,7 @@ export default function Operations({ mode }: { mode?: string }) {
                     </p>
                   </Card>
                 )}
-                <Card className="p-5">
+                <Card hidden={section !== "assurance"} className="p-5">
                   <h3
                     id="case-assurance"
                     tabIndex={-1}
@@ -1401,7 +1757,7 @@ export default function Operations({ mode }: { mode?: string }) {
                     justificatif médical n’est généré.
                   </p>
                 </Card>
-                <Card className="p-5">
+                <Card hidden={section !== "finances"} className="p-5">
                   <h3
                     id="case-finances"
                     tabIndex={-1}
@@ -1524,7 +1880,7 @@ export default function Operations({ mode }: { mode?: string }) {
                     ))}
                   </ul>
                 </Card>
-                <Card className="p-5">
+                <Card hidden={section !== "communications"} className="p-5">
                   <h3
                     id="case-communications"
                     tabIndex={-1}
@@ -1632,7 +1988,7 @@ export default function Operations({ mode }: { mode?: string }) {
                   </div>
                 </Card>
                 {d.support.length > 0 && (
-                  <Card className="p-5">
+                  <Card hidden={section !== "aide"} className="p-5">
                     <h3 className="font-semibold">Demandes d’aide</h3>
                     {d.support.map((s) => (
                       <div className="mt-3" key={s.id}>
@@ -1657,7 +2013,7 @@ export default function Operations({ mode }: { mode?: string }) {
                   </Card>
                 )}
                 {write && (
-                  <Card className="p-5">
+                  <Card hidden={section !== "coordination"} className="p-5">
                     <h3 className="font-semibold">
                       Déplacer la date administrative
                     </h3>
@@ -1698,7 +2054,7 @@ export default function Operations({ mode }: { mode?: string }) {
                     </p>
                   </Card>
                 )}
-                <Card className="p-5">
+                <Card hidden={section !== "historique"} className="p-5">
                   <h3
                     id="case-historique"
                     tabIndex={-1}

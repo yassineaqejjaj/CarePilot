@@ -1,3 +1,9 @@
+import {
+  DisplayProvider,
+  DisplayControls,
+  useDisplay,
+  technicalExample,
+} from "@/lib/display";
 import { lazy, Suspense, useState } from "react";
 import {
   NavLink,
@@ -32,7 +38,7 @@ import { displayName, logout, patientSession, roles, subject } from "@/auth";
 import { api } from "@/lib/api";
 import { roleLabel } from "@/lib/format";
 import type { Cockpit, Me } from "@/lib/types";
-import { Avatar, BrandLogo } from "@/components/ui";
+import { Avatar, BrandLogo, Logo } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import CockpitPage from "@/pages/Cockpit";
 import JourneysPage from "@/pages/Journeys";
@@ -75,6 +81,7 @@ function Sidebar({
   multiSite: boolean;
   pending?: number;
 }) {
+  const { collapsed } = useDisplay();
   const ic = (C: LucideIcon) => <C size={18} />;
   const groups: { title: string; items: Item[] }[] = [
     {
@@ -153,10 +160,24 @@ function Sidebar({
     },
   ];
   return (
-    <aside className="glass-sidebar sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col overflow-y-auto border-r border-line px-3 py-4 lg:flex">
+    <aside
+      className={cn(
+        "glass-sidebar sticky top-0 hidden h-screen shrink-0 flex-col overflow-y-auto border-r border-line px-3 py-4 lg:flex",
+        collapsed ? "w-[76px]" : "w-[248px]",
+      )}
+    >
       <div className="mb-5 flex flex-col items-center px-2">
-        <BrandLogo className="h-auto w-[120px]" />
-        <p className="mt-1 text-center text-[11px] text-ink-2">
+        {collapsed ? (
+          <Logo size={32} />
+        ) : (
+          <BrandLogo className="h-auto w-[120px]" />
+        )}
+        <p
+          className={cn(
+            "mt-1 text-center text-[11px] text-ink-2",
+            collapsed && "sr-only",
+          )}
+        >
           Votre parcours de soins.
           <br />
           Notre accompagnement.
@@ -164,13 +185,20 @@ function Sidebar({
       </div>
       {groups.map((g) => (
         <nav key={g.title} aria-label={g.title} className="mb-4">
-          <p className="mb-1 px-2 text-[11px] font-semibold uppercase tracking-wider text-teal-700">
+          <p
+            className={cn(
+              "mb-1 px-2 text-[11px] font-semibold uppercase tracking-wider text-teal-700",
+              collapsed && "sr-only",
+            )}
+          >
             {g.title}
           </p>
           {g.items.map((i) => (
             <NavLink
               key={i.to}
               to={i.to}
+              aria-label={i.label}
+              title={collapsed ? i.label : undefined}
               end={i.to === "/app"}
               className={({ isActive }) =>
                 cn(
@@ -180,10 +208,12 @@ function Sidebar({
               }
             >
               <span className="text-ink-2">{i.icon}</span>
-              <span className="flex-1">{i.label}</span>
-              {i.badge !== undefined && i.badge !== 0 && (
+              <span className={collapsed ? "sr-only" : "flex-1"}>
+                {i.label}
+              </span>
+              {!collapsed && i.badge !== undefined && i.badge !== 0 && (
                 <span
-                  title="Dossiers à traiter : attribués à vous ou sans responsable (tous pour un administrateur)"
+                  title="Dossiers avec document reçu, aide, réponse, coordonnées ou assurance à traiter ; attribués à vous ou sans responsable (tous pour un administrateur)"
                   className={cn(
                     "rounded-full px-1.5 text-meta font-semibold",
                     i.tone === "red"
@@ -193,14 +223,19 @@ function Sidebar({
                         : "text-ink-2",
                   )}
                 >
-                  {i.badge}
+                  {i.badge} {i.badge === 1 ? "dossier" : "dossiers"}
                 </span>
               )}
             </NavLink>
           ))}
         </nav>
       ))}
-      <p className="mt-auto rounded-ctl bg-surface-2 p-2.5 text-meta text-ink-2">
+      <p
+        className={cn(
+          "mt-auto rounded-ctl bg-surface-2 p-2.5 text-meta text-ink-2",
+          collapsed && "sr-only",
+        )}
+      >
         Environnement de démonstration. Toutes les données sont fictives.
       </p>
     </aside>
@@ -260,6 +295,7 @@ function Topbar({
           placeholder="Rechercher un patient, un parcours, un identifiant…"
         />
       </form>
+      <DisplayControls />
       <button
         aria-label="Notifications"
         className="relative ml-auto rounded-ctl p-2 text-ink-2 hover:bg-surface-2"
@@ -290,6 +326,13 @@ function Topbar({
 }
 
 export default function App() {
+  return (
+    <DisplayProvider>
+      <AppRoutes />
+    </DisplayProvider>
+  );
+}
+function AppRoutes() {
   if (
     roles().includes("patient") ||
     window.location.pathname.startsWith("/p/") ||
@@ -324,6 +367,7 @@ export default function App() {
 }
 
 function StaffApp() {
+  const { compact, hideTechnical } = useDisplay();
   const r = roles();
   const canDesign = r.includes("admin") || r.includes("designer");
   const isAdmin = r.includes("admin");
@@ -342,6 +386,7 @@ function StaffApp() {
     queryFn: () =>
       api<{
         items: {
+          patient: string;
           assigned_subject: string | null;
           submitted: number;
           insurance_pending: number;
@@ -354,6 +399,7 @@ function StaffApp() {
   const multiSite = (sites.data?.items.length ?? 0) > 1;
   const pending = work.data?.items.filter(
     (x) =>
+      (!hideTechnical || !technicalExample(x.patient)) &&
       (isAdmin || !x.assigned_subject || x.assigned_subject === subject()) &&
       x.submitted +
         x.insurance_pending +
@@ -365,7 +411,10 @@ function StaffApp() {
   const home =
     !isAdmin && r.includes("coordinator") ? "/operations" : "/vue-ensemble";
   return (
-    <div className="glass-app flex min-h-screen">
+    <div
+      data-density={compact ? "compact" : "comfortable"}
+      className="glass-app flex min-h-screen"
+    >
       <Sidebar
         canDesign={canDesign}
         isAdmin={isAdmin}
@@ -380,7 +429,7 @@ function StaffApp() {
           multiSite={multiSite}
         />
         <nav
-          className="glass-toolbar flex items-center justify-around border-b border-line p-2 lg:hidden"
+          className="glass-toolbar mobile-primary fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-line p-2 lg:hidden"
           aria-label="Navigation équipe mobile"
         >
           {[
@@ -410,7 +459,7 @@ function StaffApp() {
           <nav
             id="mobile-more"
             aria-label="Autres rubriques"
-            className="glass-sheet grid gap-1 border-b border-line p-4 lg:hidden"
+            className="glass-sheet fixed inset-x-2 bottom-[76px] z-30 grid max-h-[65dvh] gap-1 overflow-y-auto rounded-panel border border-line p-4 lg:hidden"
             onClick={() => setMore(false)}
           >
             {[
@@ -441,7 +490,7 @@ function StaffApp() {
             ))}
           </nav>
         )}
-        <main className="mx-auto max-w-[1180px] px-6 py-6">
+        <main className="mx-auto max-w-[1180px] px-4 py-6 pb-28 sm:px-6 lg:pb-6">
           <Suspense
             fallback={
               <p role="status" className="p-6 text-ink-2">

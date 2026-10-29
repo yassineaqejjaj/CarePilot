@@ -126,7 +126,7 @@ export default function JourneyDetailPage() {
   const na = d.next_action;
   const facts: [string, string, string][] = [
     [
-      "Acte / rendez-vous",
+      "Prise en charge",
       d.procedure,
       d.catalogue?.category ?? "Parcours administratif",
     ],
