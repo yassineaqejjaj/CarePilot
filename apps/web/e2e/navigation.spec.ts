@@ -6,7 +6,7 @@ test("desktop menu groups work by purpose and preserves old links", async ({
 }) => {
   await page.setViewportSize({ width: 1440, height: 960 });
   await login(page, STAFF);
-  const sidebar = page.locator("aside");
+  const sidebar = page.locator("aside").first();
   for (const name of [
     "Au quotidien",
     "Parcours & automatisations",

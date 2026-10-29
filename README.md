@@ -113,7 +113,7 @@ The interface now helps a coordinator move from an actionable queue to the right
 
 Shared display preferences are implemented in `apps/web/src/lib/display.tsx`; workflow filters remain in the operations page and column preferences in the dossier table. Settings contain UI metadata only. They are local to the browser, not a cross-device account configuration. No migration, patient-data reset, messaging-provider change or new dependency is required for this update. The frosted-material accessibility fallbacks remain active.
 
-For this UX update, **29 local browser scenarios passed** across the application, catalogue, operations, navigation and UX suites; the production frontend build also passed. Browser scenarios in `apps/web/e2e/ux.spec.ts` cover filter persistence without patient-search storage, direct document actions, independent insurance/finance views, display preferences, optional columns, the mobile dock and dashboard hierarchy. Run browser tests directly, without the demo-reset script:
+For this UX update, **29 local browser scenarios passed** across the application, catalogue, operations, navigation and UX suites; the production frontend build also passed. **11 read-only browser checks passed against the deployed application**, covering navigation and the new UX workflows without changing patient dossiers. Browser scenarios in `apps/web/e2e/ux.spec.ts` cover filter persistence without patient-search storage, direct document actions, independent insurance/finance views, display preferences, optional columns, the mobile dock and dashboard hierarchy. Run browser tests directly, without the demo-reset script:
 
 ```sh
 cd apps/web
