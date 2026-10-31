@@ -541,3 +541,11 @@ The repository also includes [CI checks](.github/workflows/ci.yml) for API tests
 ## Licenses
 
 The codebase currently has **no project license**; do not assume redistribution rights. Components use their own licenses (including MIT, Apache-2.0, PostgreSQL License and Grafana OSS AGPL-3.0); fonts use SIL OFL. Re-audit exact deployed versions and obligations before distribution. See [architecture notes](docs/architecture.md).
+
+---
+
+## Part of an engineering approach
+
+Built with the [Agentic SDLC framework](https://github.com/yassineaqejjaj/agentic-sdlc) (earned autonomy). Read how this project was built and what its checks caught in the [case study](https://github.com/yassineaqejjaj/agentic-sdlc/blob/main/docs/case-studies/carepilot.md).
+
+Companion to the book [Leading with AI: A Blueprint for AI-Enhanced Healthcare](https://www.amazon.fr/dp/B0CVB848M6).
