@@ -7,6 +7,23 @@
 
 **Your care journey. Our support.**
 
+[![CI](https://github.com/yassineaqejjaj/CarePilot/actions/workflows/ci.yml/badge.svg)](https://github.com/yassineaqejjaj/CarePilot/actions/workflows/ci.yml)
+
+## At a glance
+
+| | |
+|---|---|
+| **Name** | The product is called **M3aya Santé**; the repository is named **CarePilot** (the application text also says "formerly CarePilot"). |
+| **What it is** | A patient-journey coordination and support platform for Moroccan clinics, with a bilingual French/Arabic patient portal, nine administrative care pathways and human-approved AI assistance. |
+| **Problem** | Care journeys are fragmented across patients, facilities, professionals and insurers: missing documents, poorly coordinated appointments and manual reminders ([details](#the-problem-we-solve)). |
+| **Status** | **Prototype**: a demonstration with synthetic data only, not for real patients (see [Remaining work before use with real patients](#remaining-work-before-use-with-real-patients)). |
+| **Demo** | [Live demo](https://carepilot-maroc.vercel.app) · [Product walkthrough](https://github.com/user-attachments/assets/f6f8542e-7ebe-4b5e-8892-dd34fc8fe758) |
+| **Architecture** | [`docs/architecture.md`](docs/architecture.md) and [Architecture and stack](#architecture-and-stack) |
+| **Security and compliance** | [`docs/security.md`](docs/security.md) · [`docs/compliance-morocco.md`](docs/compliance-morocco.md) |
+| **Case study** | [How this project was built](https://github.com/yassineaqejjaj/agentic-sdlc/blob/main/docs/case-studies/carepilot.md) |
+
+**Where to find what**: product overview, problem and solution ([Our vision](#our-vision)) · key features ([For clinic teams](#for-clinic-teams)) · architecture and tech stack ([For developers](#architecture-and-stack)) · screenshots and demo ([Try the current application](#try-the-current-application)) · getting started ([Run locally](#run-locally)) · testing and quality ([Tests](#tests)) · known limitations ([Remaining work before use with real patients](#remaining-work-before-use-with-real-patients)) · licence ([Licenses](#licenses): no project licence file yet). Roadmap: not yet documented as a separate section; open items are listed under remaining work.
+
 [Notre vision — français](docs/vision.fr.md) · [Brand assets](apps/web/public/brand/README.md)
 
 ## Our vision
