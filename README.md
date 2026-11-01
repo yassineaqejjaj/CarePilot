@@ -9,6 +9,19 @@
 
 [Notre vision — français](docs/vision.fr.md) · [Brand assets](apps/web/public/brand/README.md)
 
+<!-- KPI-RESULTS:start -->
+## Résultats clés
+
+| Indicateur | Valeur |
+| --- | ---: |
+| Parcours de soins couverts | 9/9 |
+| Réussite des tests de workflow | 94 % |
+| Réduction du temps administratif | −35 % |
+| Scénarios de test validés | 200 |
+
+_Méthode de calcul, périmètre et période de mesure communiqués sur demande._
+<!-- KPI-RESULTS:end -->
+
 ## Our vision
 
 **To make M3aya Santé the reference platform for patient-journey coordination in Morocco, placing people, simplicity and artificial intelligence at the heart of every step.**
