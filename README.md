@@ -1,5 +1,7 @@
 # M3aya Santé | معايا
 
+![IASEEN Constellation — CarePilot](docs/assets/github-cover.svg)
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/brand/logo-dark.svg" />
   <img src="apps/web/public/brand/logo-light.svg" alt="M3aya Santé | معايا" width="220" />
